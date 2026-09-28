@@ -185,7 +185,7 @@ Sí, completamente offline. Solo necesitás Python y las dependencias instaladas
 ## Estructura de archivos
 
 ```
-saussure-quantum-fusion/
+saussure-quantum/
 ├── gui.py                  ← Ejecutar esto para abrir la interfaz
 ├── saussure_quantum/       ← El paquete Python (no modificar)
 ├── examples/               ← Scripts de ejemplo por línea de comandos

@@ -49,8 +49,8 @@ El mundo no está hecho de objetos, sino de relaciones de oposición. Una "silla
 
 ```bash
 # Clonar repositorio
-git clone https://github.com/doomhammer793/saussure-quantum-fusion.git
-cd saussure-quantum-fusion
+git clone https://github.com/martinezmarcos93/saussure-quantum.git
+cd saussure-quantum
 
 # Instalar dependencias
 pip install -r requirements.txt
@@ -253,7 +253,7 @@ D̂ = Σᵢ﹤ⱼ (|sᵢ⟩ − |sⱼ⟩)    (operador diferencia)
 ## 📁 Estructura del proyecto
 
 ```
-saussure-quantum-fusion/
+saussure-quantum/
 │
 ├── README.md
 ├── LICENSE
@@ -374,7 +374,7 @@ Si usas este trabajo en investigación académica:
   author = {Martínez, Marcos},
   title  = {Saussure-Quantum Fusion: A Computational Implementation},
   year   = {2026},
-  url    = {https://github.com/doomhammer793/saussure-quantum-fusion}
+  url    = {https://github.com/martinezmarcos93/saussure-quantum}
 }
 ```
 
