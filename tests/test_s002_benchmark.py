@@ -111,3 +111,46 @@ def test_benchmark_ajustado_separa_train_y_test():
         assert "log_likelihood_train" in metricas
         assert "AIC_train" in metricas
         assert "BIC_train" in metricas
+
+
+def test_regimenes_generadores_estan_definidos_y_validos():
+    from saussure_quantum.s002_benchmark import (
+        REGIMENES_S002,
+        generar_datos_regimen_s002,
+    )
+
+    for i, regimen in enumerate(REGIMENES_S002):
+        data = generar_datos_regimen_s002(regimen, n_por_orden=100, seed=40 + i)
+        assert data.n_ab == 100
+        assert data.n_ba == 100
+        assert np.isclose(data.counts_ab.sum(), 100)
+        assert np.isclose(data.counts_ba.sum(), 100)
+
+
+def test_seleccionador_s002_respeta_criterio():
+    from saussure_quantum.s002_benchmark import seleccionar_modelo_s002
+
+    resultados = {
+        "a": {"log_likelihood": -10.0, "L1_medio": 0.2, "JS_medio": 0.1, "BIC_train": 30.0},
+        "b": {"log_likelihood": -8.0, "L1_medio": 0.3, "JS_medio": 0.2, "BIC_train": 25.0},
+        "c": {"log_likelihood": -9.0, "L1_medio": 0.1, "JS_medio": 0.05, "BIC_train": 27.0},
+    }
+    assert seleccionar_modelo_s002(resultados, "test_log_likelihood") == "b"
+    assert seleccionar_modelo_s002(resultados, "test_L1") == "c"
+    assert seleccionar_modelo_s002(resultados, "test_JS") == "c"
+    assert seleccionar_modelo_s002(resultados, "train_BIC") == "b"
+
+
+def test_recuperacion_s002_devuelve_estructura_completa():
+    from saussure_quantum.s002_benchmark import evaluar_recuperacion_s002
+
+    resultado = evaluar_recuperacion_s002(
+        "sin_orden",
+        n_replicas=1,
+        n_por_orden=100,
+        seed=53,
+    )
+    assert resultado["regimen_verdadero"] == "sin_orden"
+    assert resultado["n_replicas"] == 1
+    assert 0 <= resultado["recuperacion_test"] <= 1
+    assert 0 <= resultado["recuperacion_bic"] <= 1
