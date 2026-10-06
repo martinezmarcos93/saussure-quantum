@@ -25,7 +25,8 @@ class ObservablesSaussureanos:
     Ŝ (Sintagma) = análogo a la posición
     P̂ (Paradigma) = análogo al momento
     
-    Satisfacen: [Ŝ, P̂] = i·ℏ_semiotico
+    No satisfacen exactamente una relación canónica en dimensión finita. La cota
+    utilizada es la desigualdad de Robertson basada en el conmutador efectivo.
     """
     
     def __init__(self, dimension: int, hbar: float = HBAR_SEMIOTICO):
@@ -129,9 +130,10 @@ class ObservablesSaussureanos:
         
         Returns:
             (ΔS, ΔP, ΔS·ΔP)
-        
-        Note:
-            Por el principio de incertidumbre: ΔS·ΔP ≥ ℏ/2
+
+        La cota relevante para estos operadores finitos no es ℏ/2 en general.
+        Se calcula a partir del conmutador real mediante Robertson:
+            ΔS·ΔP ≥ 1/2 |⟨[S,P]⟩|.
         """
         psi = estado.amplitudes
         
@@ -193,13 +195,15 @@ class PrincipioIncertidumbreSaussure:
             Diccionario con valores de incertidumbre y análisis cualitativo
         """
         delta_S, delta_P, producto = self.obs.incertidumbre(estado)
-        cota_minima = self.hbar / 2
+        psi = estado.amplitudes
+        comm_expectation = np.vdot(psi, self.obs._conmutador @ psi)
+        cota_robertson = 0.5 * abs(comm_expectation)
         
         # Interpretación cualitativa
-        if producto < cota_minima * 1.1:
-            interpretacion = "ESTADO DE MÍNIMA INCERTIDUMBRE (coherente)"
-        elif producto > cota_minima * 10:
-            interpretacion = "ALTA INCERTIDUMBRE (muy indeterminado)"
+        if cota_robertson > 1e-12 and producto <= cota_robertson * 1.1:
+            interpretacion = "CERCANO A LA COTA DE ROBERTSON"
+        elif producto > max(cota_robertson, 1e-12) * 10:
+            interpretacion = "ALTA INCERTIDUMBRE RELATIVA A LA COTA"
         else:
             interpretacion = "INCERTIDUMBRE MODERADA"
         
@@ -213,9 +217,10 @@ class PrincipioIncertidumbreSaussure:
             "delta_sintagma": delta_S,
             "delta_paradigma": delta_P,
             "producto_incertidumbre": producto,
-            "cota_heisenberg": cota_minima,
-            "satisface_principio": producto >= cota_minima - 1e-10,
-            "factor_sobre_cota": producto / cota_minima if cota_minima > 0 else float('inf'),
+            "cota_robertson": float(cota_robertson),
+            "valor_conmutador": complex(comm_expectation),
+            "satisface_robertson": producto + 1e-10 >= cota_robertson,
+            "factor_sobre_cota": producto / cota_robertson if cota_robertson > 1e-12 else float('inf'),
             "interpretacion": interpretacion,
             "dominancia": dominancia
         }
