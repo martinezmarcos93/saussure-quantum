@@ -65,9 +65,9 @@ Control recomendado para dimensión 2:
 - estado inicial: |+⟩ = (|0⟩+|1⟩)/√2;
 - G_A = X;
 - G_B = Z;
-- θ_A = θ_B = π/2.
+- θ_A = θ_B = π/4.
 
-Este control produce un efecto de orden deliberadamente fuerte y sirve para validar la implementación. No constituye todavía evidencia de una ventaja quantum-like sobre datos cognitivos reales.
+Este control produce un efecto de orden observable en la distribución medida y sirve para validar la implementación. No constituye todavía evidencia de una ventaja quantum-like sobre datos cognitivos reales.
 
 ## Criterio epistemológico
 
@@ -81,3 +81,30 @@ La existencia de AB ≠ BA sólo demuestra que el formalismo implementado es no 
 6. aceptar explícitamente un resultado nulo si el baseline clásico explica los datos igual o mejor.
 
 El siguiente paso es construir el benchmark sintético S002 y su protocolo de comparación de modelos.
+
+
+## Benchmark computacional S002
+
+El módulo `saussure_quantum/s002_benchmark.py` formaliza cuatro referencias:
+
+| Modelo | Supuesto | Complejidad |
+|---|---|---:|
+| Clásico estático | una distribución para ambos órdenes | 1 parámetro |
+| Clásico secuencial | dos canales estocásticos que pueden no conmutar | 5 parámetros |
+| Vectorial unitario | estado + transformaciones unitarias | 2 parámetros en el control |
+| Quantum-like | misma dinámica unitaria bajo la capa conceptual quantum-like | 2 parámetros en el control |
+
+El dataset sintético por defecto utiliza:
+
+- AB = (0.50, 0.50)
+- BA = (0.95, 0.05)
+- 2000 observaciones por orden
+- semilla 2026
+
+Esto no representa datos humanos: es un banco de pruebas para verificar que las métricas detectan un efecto de orden conocido.
+
+Las métricas implementadas son L1 medio, Jensen-Shannon medio, log-likelihood, AIC y BIC.
+
+### Interpretación
+
+El benchmark no debe concluir "quantum-like" sólo porque el modelo genera AB ≠ BA. El baseline clásico secuencial también puede hacerlo. La ventaja científica sólo aparece si, después de ajustar parámetros y evaluar datos fuera de muestra, el modelo quantum-like obtiene una mejora robusta que no puede atribuirse simplemente a mayor flexibilidad o parametrización.
