@@ -190,11 +190,26 @@ def modelo_vectorial_unitario(
 
 
 def modelo_quantum_like(
-    *args,
+    ruido: float = 0.05,
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Alias explícito del modelo vectorial para separar capas conceptuales."""
-    return modelo_vectorial_unitario(*args, **kwargs)
+    """Modelo quantum-like con estado puro y decoherencia efectiva.
+
+    La mezcla se modela como un canal de ruido clásico sobre las
+    probabilidades de medición:
+        p' = (1-r) p + r / d.
+
+    Es deliberadamente simple: permite separar el control vectorial puro
+    de una representación que admite pérdida de coherencia/indeterminación.
+    """
+    if not 0 <= ruido <= 1:
+        raise ValueError("ruido debe estar en [0, 1].")
+    p_ab, p_ba = modelo_vectorial_unitario(**kwargs)
+    uniform = np.full_like(p_ab, 1.0 / len(p_ab))
+    return (
+        (1 - ruido) * p_ab + ruido * uniform,
+        (1 - ruido) * p_ba + ruido * uniform,
+    )
 
 
 def benchmark_s002(
@@ -212,6 +227,6 @@ def benchmark_s002(
         "clasico_estatico": 1,
         "clasico_secuencial": 5,
         "vectorial_unitario": 2,
-        "quantum_like": 2,
+        "quantum_like": 3,
     }
     return evaluar_predicciones(data, pred, params)
