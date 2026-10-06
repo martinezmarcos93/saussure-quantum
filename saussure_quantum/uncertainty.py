@@ -1,10 +1,10 @@
 """
-uncertainty.py - Principio de incertidumbre Saussure-Heisenberg
+uncertainty.py - Incertidumbre semiótica en un modelo quantum-like
 
 Implementa:
 - El análogo lingüístico del principio de incertidumbre cuántico
 - Observables complementarios: Paradigma (momento) vs Sintagma (posición)
-- Relación de conmutación no nula [Ŝ, P̂] = iℏ_efectivo
+- Cota de Robertson calculada desde el conmutador efectivo
 - La imposibilidad de conocer simultáneamente ambas dimensiones del signo
 """
 
@@ -44,7 +44,8 @@ class ObservablesSaussureanos:
         self.S = self._construir_sintagma()
         self.P = self._construir_paradigma()
         
-        # Verificar conmutación
+        # En dimensión finita no puede existir [S,P] = iℏI exactamente.
+        # Guardamos el conmutador efectivo para aplicar Robertson estado por estado.
         self._conmutador = self._calcular_conmutador()
     
     def _construir_sintagma(self) -> np.ndarray:
@@ -155,9 +156,12 @@ class ObservablesSaussureanos:
     
     def estado_minima_incertidumbre(self) -> SignoCuanto:
         """
-        Genera un estado que satura la cota de incertidumbre.
-        
-        Estado coherente semiótico: mínima incertidumbre posible.
+        Genera un estado gaussiano discreto como candidato de compromiso.
+
+        No se afirma que este estado sature la cota de Robertson. La saturación
+        es una propiedad que debe demostrarse para un par de observables y un
+        estado concretos; esta construcción sólo proporciona un estado de
+        referencia suave y localizado.
         """
         # Estado gaussiano en representación de posición (sintagma)
         x = np.linspace(-3, 3, self.dimension)
