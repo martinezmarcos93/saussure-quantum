@@ -402,6 +402,95 @@ def benchmark_ajustado_s002(
     train, test = dividir_train_test(data, proporcion_train, seed_split)
     return evaluar_train_test_s002(train, test)
 
+
+def seleccionar_modelo_s002(
+    resultados: Dict[str, Dict[str, float]],
+    criterio: str = "test_log_likelihood",
+) -> str:
+    """Selecciona el modelo ganador según un criterio explícito."""
+    if not resultados:
+        raise ValueError("resultados no puede estar vacío.")
+    if criterio == "test_log_likelihood":
+        return max(resultados, key=lambda n: resultados[n]["log_likelihood"])
+    if criterio == "test_L1":
+        return min(resultados, key=lambda n: resultados[n]["L1_medio"])
+    if criterio == "test_JS":
+        return min(resultados, key=lambda n: resultados[n]["JS_medio"])
+    if criterio == "train_BIC":
+        return min(resultados, key=lambda n: resultados[n]["BIC_train"])
+    raise ValueError(
+        "criterio debe ser test_log_likelihood, test_L1, test_JS o train_BIC."
+    )
+
+
+def evaluar_recuperacion_s002(
+    regimen: str,
+    n_replicas: int = 20,
+    n_por_orden: int = 1000,
+    seed: int = 2026,
+    proporcion_train: float = 0.8,
+) -> Dict[str, object]:
+    """Evalúa con qué frecuencia el procedimiento recupera un régimen conocido.
+
+    Esto no presupone que el régimen verdadero sea identificable: una baja
+    recuperación es un resultado científico válido y puede revelar que dos
+    familias son observacionalmente equivalentes con los datos disponibles.
+    """
+    if regimen not in REGIMENES_S002:
+        raise ValueError(f"Régimen desconocido: {regimen!r}.")
+    if n_replicas < 1:
+        raise ValueError("n_replicas debe ser >= 1.")
+
+    seleccion_test: Dict[str, int] = {}
+    seleccion_bic: Dict[str, int] = {}
+    for i in range(n_replicas):
+        data = generar_datos_regimen_s002(
+            regimen,
+            n_por_orden=n_por_orden,
+            seed=seed + i,
+        )
+        train, test = dividir_train_test(
+            data,
+            proporcion_train=proporcion_train,
+            seed=seed + 10000 + i,
+        )
+        resultados = evaluar_train_test_s002(train, test)
+        ganador_test = seleccionar_modelo_s002(resultados, "test_log_likelihood")
+        ganador_bic = seleccionar_modelo_s002(resultados, "train_BIC")
+        seleccion_test[ganador_test] = seleccion_test.get(ganador_test, 0) + 1
+        seleccion_bic[ganador_bic] = seleccion_bic.get(ganador_bic, 0) + 1
+
+    return {
+        "regimen_verdadero": regimen,
+        "n_replicas": n_replicas,
+        "frecuencia_test": seleccion_test,
+        "frecuencia_bic": seleccion_bic,
+        "recuperacion_test": seleccion_test.get(regimen, 0) / n_replicas,
+        "recuperacion_bic": seleccion_bic.get(regimen, 0) / n_replicas,
+    }
+
+
+def matriz_recuperacion_s002(
+    regimenes: Iterable[str] = REGIMENES_S002,
+    n_replicas: int = 20,
+    n_por_orden: int = 1000,
+    seed: int = 2026,
+) -> Dict[str, Dict[str, object]]:
+    """Construye la matriz de recuperación para todos los regímenes."""
+    regimenes = tuple(regimenes)
+    for regimen in regimenes:
+        if regimen not in REGIMENES_S002:
+            raise ValueError(f"Régimen desconocido: {regimen!r}.")
+    return {
+        regimen: evaluar_recuperacion_s002(
+            regimen,
+            n_replicas=n_replicas,
+            n_por_orden=n_por_orden,
+            seed=seed + i * 100000,
+        )
+        for i, regimen in enumerate(regimenes)
+    }
+
 def benchmark_s002(
     data: S002Dataset | None = None,
 ) -> Dict[str, Dict[str, float]]:
