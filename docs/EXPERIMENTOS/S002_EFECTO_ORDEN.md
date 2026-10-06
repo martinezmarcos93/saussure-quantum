@@ -92,7 +92,7 @@ El módulo `saussure_quantum/s002_benchmark.py` formaliza cuatro referencias:
 | Clásico estático | una distribución para ambos órdenes | 1 parámetro |
 | Clásico secuencial | dos canales estocásticos que pueden no conmutar | 5 parámetros |
 | Vectorial unitario | estado + transformaciones unitarias | 2 parámetros en el control |
-| Quantum-like | misma dinámica unitaria bajo la capa conceptual quantum-like | 2 parámetros en el control |
+| Quantum-like | dinámica unitaria + ruido/decoherencia efectiva | 3 parámetros en el control |
 
 El dataset sintético por defecto utiliza:
 
@@ -101,10 +101,15 @@ El dataset sintético por defecto utiliza:
 - 2000 observaciones por orden
 - semilla 2026
 
+El régimen está elegido para que el modelo vectorial puro produzca aproximadamente
+(0.50, 0.50) para AB y (1.00, 0.00) para BA, mientras que el modelo quantum-like
+con ruido 0.05 suaviza el extremo BA hacia (0.975, 0.025). Esto es un control
+metodológico, no una afirmación sobre datos psicológicos.
+
 Esto no representa datos humanos: es un banco de pruebas para verificar que las métricas detectan un efecto de orden conocido.
 
 Las métricas implementadas son L1 medio, Jensen-Shannon medio, log-likelihood, AIC y BIC.
 
 ### Interpretación
 
-El benchmark no debe concluir "quantum-like" sólo porque el modelo genera AB ≠ BA. El baseline clásico secuencial también puede hacerlo. La ventaja científica sólo aparece si, después de ajustar parámetros y evaluar datos fuera de muestra, el modelo quantum-like obtiene una mejora robusta que no puede atribuirse simplemente a mayor flexibilidad o parametrización.
+El benchmark no debe concluir "quantum-like" sólo porque el modelo genera AB ≠ BA. El baseline clásico secuencial también puede hacerlo. La implementación actual establece el benchmark de predicción con parámetros controlados. La siguiente capa será el ajuste de parámetros sobre train y la evaluación sobre test; hasta entonces, AIC/BIC se interpretan sólo como métricas de los modelos parametrizados bajo el control elegido, no como selección definitiva de modelo.
