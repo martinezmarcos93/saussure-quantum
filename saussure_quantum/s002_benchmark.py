@@ -46,8 +46,8 @@ def _softmax(x: np.ndarray) -> np.ndarray:
 def generar_datos_s002(
     n_por_orden: int = 2000,
     seed: int = 2026,
-    prob_ab: Iterable[float] = (0.80, 0.20),
-    prob_ba: Iterable[float] = (0.20, 0.80),
+    prob_ab: Iterable[float] = (0.50, 0.50),
+    prob_ba: Iterable[float] = (0.95, 0.05),
 ) -> S002Dataset:
     """Genera un dataset binario con efecto de orden controlado."""
     if n_por_orden < 1:
@@ -166,8 +166,8 @@ def modelo_vectorial_unitario(
     amplitud_inicial: Iterable[complex] = (1 / np.sqrt(2), 1 / np.sqrt(2)),
     generador_a: np.ndarray | None = None,
     generador_b: np.ndarray | None = None,
-    theta_a: float = np.pi / 2,
-    theta_b: float = np.pi / 2,
+    theta_a: float = np.pi / 4,
+    theta_b: float = np.pi / 4,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Modelo vectorial unitario; conserva fases pero no usa la semántica de rho."""
     from scipy.linalg import expm
