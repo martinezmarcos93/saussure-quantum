@@ -10,6 +10,7 @@ No afirma que el significado sea físicamente cuántico.
 from __future__ import annotations
 
 import numpy as np
+from scipy.linalg import expm
 
 from .core import SignoCuanto
 
@@ -87,4 +88,60 @@ def efecto_orden(
         "distancia_L1": float(np.sum(np.abs(
             distribucion_clasica(ab) - distribucion_clasica(ba)
         ))),
+    }
+
+
+def operador_contexto_unitario(
+    estado: SignoCuanto,
+    generador: np.ndarray,
+    intensidad: float = 1.0,
+) -> SignoCuanto:
+    """Aplica un contexto unitario quantum-like generado por una matriz Hermitiana.
+
+    Esta construcción introduce no conmutatividad de forma controlada. No
+    representa una dinámica física del significado; es un formalismo
+    experimental para probar si el orden contextual aporta capacidad
+    explicativa frente a baselines clásicos.
+    """
+    generador = np.asarray(generador, dtype=complex)
+    if generador.shape != (estado.dimension, estado.dimension):
+        raise ValueError("El generador debe ser una matriz cuadrada compatible.")
+    if not np.isfinite(intensidad):
+        raise ValueError("La intensidad debe ser finita.")
+    if not np.allclose(generador, generador.conj().T, atol=1e-10):
+        raise ValueError("El generador contextual debe ser Hermitiano.")
+
+    U = expm(-1j * float(intensidad) * generador)
+    amplitudes = U @ estado.amplitudes
+    return SignoCuanto(estado.significantes.copy(), amplitudes)
+
+
+def efecto_orden_no_conmutativo(
+    estado: SignoCuanto,
+    generador_a: np.ndarray,
+    generador_b: np.ndarray,
+    intensidad_a: float = 1.0,
+    intensidad_b: float = 1.0,
+) -> dict:
+    """Compara A→B y B→A con contextos unitarios potencialmente no conmutativos."""
+    a = operador_contexto_unitario(estado, generador_a, intensidad_a)
+    ab = operador_contexto_unitario(a, generador_b, intensidad_b)
+
+    b = operador_contexto_unitario(estado, generador_b, intensidad_b)
+    ba = operador_contexto_unitario(b, generador_a, intensidad_a)
+
+    commutador = np.asarray(generador_a) @ np.asarray(generador_b) - (
+        np.asarray(generador_b) @ np.asarray(generador_a)
+    )
+
+    p_ab = distribucion_clasica(ab)
+    p_ba = distribucion_clasica(ba)
+
+    return {
+        "AB": p_ab,
+        "BA": p_ba,
+        "distancia_L1": float(np.sum(np.abs(p_ab - p_ba))),
+        "norma_conmutador": float(np.linalg.norm(commutador)),
+        "estado_AB": ab,
+        "estado_BA": ba,
     }
