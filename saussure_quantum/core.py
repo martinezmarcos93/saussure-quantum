@@ -35,7 +35,11 @@ class SignoCuanto:
             amplitudes: Lista de amplitudes complejas (opcional)
                         Si es None, se crea superposición equitativa
         """
-        self.significantes = significantes
+        if not significantes:
+            raise ValueError("Se requiere al menos un significante.")
+        if len(set(significantes)) != len(significantes):
+            raise ValueError("Los significantes deben ser únicos.")
+        self.significantes = list(significantes)
         self.dimension = len(significantes)
         
         if amplitudes is None:
@@ -50,11 +54,10 @@ class SignoCuanto:
     def normalizar(self) -> None:
         """Normalizar el vector de amplitudes (norma L2 = 1)"""
         norma = np.linalg.norm(self.amplitudes)
-        if norma > 0:
+        if norma > 0 and np.isfinite(norma):
             self.amplitudes = self.amplitudes / norma
         else:
-            warnings.warn("Vector de amplitudes nulo. Inicializando uniformemente.")
-            self.amplitudes = np.ones(self.dimension, dtype=complex) / np.sqrt(self.dimension)
+            raise ValueError("El vector de amplitudes debe tener norma finita y distinta de cero.")
     
     def probabilidad(self, significante: Union[str, int]) -> float:
         """
@@ -76,7 +79,7 @@ class SignoCuanto:
             
         return float(np.abs(self.amplitudes[idx]) ** 2)
     
-    def colapsar(self, idx: Optional[int] = None) -> tuple:
+    def colapsar(self, idx: Optional[int] = None, seed: Optional[int] = None) -> tuple:
         """
         Acto de parole: colapsar la superposición a un significante.
 
@@ -95,9 +98,12 @@ class SignoCuanto:
             solo el str. La firma cambió a tupla para ser consistente con
             colapso_parole(). Si solo necesitás el significante: sig, _ = signo.colapsar()
         """
+        if idx is not None and not 0 <= idx < self.dimension:
+            raise IndexError(f"Índice de colapso fuera de rango: {idx}")
         if idx is None:
             probabilidades = np.abs(self.amplitudes) ** 2
-            idx = np.random.choice(self.dimension, p=probabilidades)
+            rng = np.random.default_rng(seed)
+            idx = int(rng.choice(self.dimension, p=probabilidades))
 
         # Construir el estado colapsado como objeto nuevo, sin mutar self
         amplitudes_colapsadas = np.zeros(self.dimension, dtype=complex)
