@@ -142,3 +142,55 @@ Las métricas implementadas son L1 medio, Jensen-Shannon medio, log-likelihood, 
 ### Interpretación
 
 El benchmark no debe concluir "quantum-like" sólo porque el modelo genera AB ≠ BA. El baseline clásico secuencial también puede hacerlo. La implementación actual establece el benchmark de predicción con parámetros controlados. La siguiente capa será el ajuste de parámetros sobre train y la evaluación sobre test; hasta entonces, AIC/BIC se interpretan sólo como métricas de los modelos parametrizados bajo el control elegido, no como selección definitiva de modelo.
+
+
+## S002.1 — Recuperación del modelo generador
+
+Antes de pasar a datos cognitivos reales, el protocolo debe demostrar que puede distinguir —o detectar correctamente la indistinguibilidad— entre regímenes conocidos.
+
+Se incorporó una batería de cuatro generadores sintéticos:
+
+| Régimen generador | Propiedad esperada |
+|---|---|
+| `sin_orden` | AB y BA comparten distribución |
+| `clasico_secuencial` | existe dinámica contextual clásica no conmutativa |
+| `vectorial_unitario` | evolución por operadores unitarios X/Z |
+| `quantum_like` | evolución unitaria más ruido efectivo |
+
+La función `generar_datos_regimen_s002()` produce observaciones multinomiales a partir de las probabilidades exactas de cada régimen. `evaluar_recuperacion_s002()` repite el ciclo completo de generación → split → ajuste → evaluación y registra qué familia resulta seleccionada.
+
+Se registran dos criterios independientes:
+
+- máxima log-verosimilitud predictiva sobre test;
+- mínimo BIC sobre train.
+
+La métrica de recuperación es la proporción de réplicas en las que el procedimiento selecciona la familia que generó los datos.
+
+### Qué significaría un resultado negativo
+
+Si el régimen generador quantum-like no es recuperado, no se debe manipular el benchmark hasta obtener una recuperación positiva. Las posibilidades incluyen:
+
+1. falta de información en las observaciones finales;
+2. equivalencia observacional entre modelos;
+3. exceso de flexibilidad del baseline clásico;
+4. parametrización inadecuada del modelo quantum-like;
+5. tamaño muestral insuficiente.
+
+Esto es precisamente lo que el control pretende revelar.
+
+### Límite actual
+
+Los cuatro regímenes comparten observaciones agregadas únicamente en los estados finales AB y BA. Por ello, esta batería evalúa recuperación bajo información limitada, no identificación estructural completa.
+
+El siguiente salto experimental deberá incorporar observaciones intermedias y múltiples contextos. Sólo entonces podremos preguntar si una dinámica quantum-like explica patrones que un modelo clásico dinámico no puede reproducir sin una complejidad sustancialmente mayor.
+
+## Estado de S002
+
+S002 queda dividido en cuatro capas:
+
+1. control matemático de no conmutatividad;
+2. benchmark con parámetros fijados;
+3. ajuste train/test;
+4. recuperación del modelo generador.
+
+El paso pendiente antes de declarar S002 experimentalmente cerrado es ejecutar la batería local, inspeccionar convergencia de los optimizadores y verificar las frecuencias de recuperación. No se ejecutó automáticamente para respetar el protocolo de validación local del proyecto.
