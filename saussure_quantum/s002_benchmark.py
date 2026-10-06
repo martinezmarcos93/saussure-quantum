@@ -64,6 +64,49 @@ def generar_datos_s002(
     )
 
 
+
+REGIMENES_S002 = (
+    "sin_orden",
+    "clasico_secuencial",
+    "vectorial_unitario",
+    "quantum_like",
+)
+
+
+def probabilidades_regimen_s002(
+    regimen: str,
+    ruido: float = 0.05,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Devuelve las probabilidades verdaderas de un régimen sintético."""
+    if regimen == "sin_orden":
+        return baseline_clasico_estatico()
+    if regimen == "clasico_secuencial":
+        return modelo_clasico_secuencial()
+    if regimen == "vectorial_unitario":
+        return modelo_vectorial_unitario()
+    if regimen == "quantum_like":
+        return modelo_quantum_like(ruido=ruido)
+    raise ValueError(
+        f"Régimen desconocido: {regimen!r}. "
+        f"Opciones: {REGIMENES_S002}."
+    )
+
+
+def generar_datos_regimen_s002(
+    regimen: str,
+    n_por_orden: int = 2000,
+    seed: int = 2026,
+    ruido: float = 0.05,
+) -> S002Dataset:
+    """Genera datos sintéticos desde un modelo generador conocido."""
+    p_ab, p_ba = probabilidades_regimen_s002(regimen, ruido=ruido)
+    return generar_datos_s002(
+        n_por_orden=n_por_orden,
+        seed=seed,
+        prob_ab=p_ab,
+        prob_ba=p_ba,
+    )
+
 def distribuciones_observadas(data: S002Dataset) -> Dict[str, np.ndarray]:
     """Devuelve las frecuencias empíricas por orden."""
     return {
