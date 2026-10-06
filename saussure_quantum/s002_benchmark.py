@@ -212,6 +212,153 @@ def modelo_quantum_like(
     )
 
 
+
+def _sigmoid(x: np.ndarray | float) -> np.ndarray | float:
+    """Transformación logística estable para parámetros acotados."""
+    x = np.asarray(x, dtype=float)
+    return 1.0 / (1.0 + np.exp(-np.clip(x, -60.0, 60.0)))
+
+
+def dividir_train_test(
+    data: S002Dataset,
+    proporcion_train: float = 0.8,
+    seed: int = 2026,
+) -> Tuple[S002Dataset, S002Dataset]:
+    """Divide cada orden mediante un muestreo binomial reproducible."""
+    if not 0 < proporcion_train < 1:
+        raise ValueError("proporcion_train debe estar estrictamente entre 0 y 1.")
+    rng = np.random.default_rng(seed)
+    train, test = [], []
+    for counts in (data.counts_ab, data.counts_ba):
+        n0 = int(rng.binomial(int(counts[0]), proporcion_train))
+        n1 = int(rng.binomial(int(counts[1]), proporcion_train))
+        tr = np.array([n0, n1], dtype=int)
+        train.append(tr)
+        test.append(np.asarray(counts, dtype=int) - tr)
+    return S002Dataset(train[0], train[1]), S002Dataset(test[0], test[1])
+
+
+def _nll_dataset(data: S002Dataset, predicciones: Tuple[np.ndarray, np.ndarray]) -> float:
+    return -(
+        log_likelihood_multinomial(data.counts_ab, predicciones[0])
+        + log_likelihood_multinomial(data.counts_ba, predicciones[1])
+    )
+
+
+def _optimizar(objetivo: Callable[[np.ndarray], float], x0s: Iterable[np.ndarray]) -> np.ndarray:
+    """Minimiza desde varios puntos iniciales deterministas."""
+    from scipy.optimize import minimize
+
+    resultados = []
+    for x0 in x0s:
+        r = minimize(objetivo, np.asarray(x0, dtype=float), method="BFGS",
+                     options={"maxiter": 2000, "gtol": 1e-8})
+        if np.isfinite(r.fun):
+            resultados.append(r)
+    if not resultados:
+        raise RuntimeError("No fue posible ajustar el modelo.")
+    return np.asarray(min(resultados, key=lambda r: r.fun).x, dtype=float)
+
+
+def ajustar_clasico_estatico(data: S002Dataset) -> Tuple[np.ndarray, np.ndarray]:
+    """Ajusta una probabilidad compartida a ambos órdenes."""
+    total = data.counts_ab + data.counts_ba
+    p1 = float(total[1] / total.sum())
+    p = np.array([1.0 - p1, p1])
+    return p.copy(), p.copy()
+
+
+def ajustar_clasico_secuencial(data: S002Dataset) -> Tuple[np.ndarray, np.ndarray]:
+    """Ajusta estado inicial y dos canales estocásticos binarios."""
+    def pred(x):
+        p0 = float(_sigmoid(x[0]))
+        a0, a1, b0, b1 = map(float, _sigmoid(x[1:]))
+        p = np.array([1.0 - p0, p0])
+        ma = np.array([[1.0 - a0, a1], [a0, 1.0 - a1]])
+        mb = np.array([[1.0 - b0, b1], [b0, 1.0 - b1]])
+        return mb @ ma @ p, ma @ mb @ p
+
+    x = _optimizar(lambda z: _nll_dataset(data, pred(z)), (
+        np.zeros(5),
+        np.array([0.0, -1.0, 1.0, -1.0, 1.0]),
+        np.array([0.0, 1.0, -1.0, 1.0, -1.0]),
+    ))
+    return pred(x)
+
+
+def ajustar_vectorial_unitario(data: S002Dataset) -> Tuple[np.ndarray, np.ndarray]:
+    """Ajusta theta_A y theta_B con generadores X/Z fijos."""
+    def pred(x):
+        return modelo_vectorial_unitario(theta_a=float(x[0]), theta_b=float(x[1]))
+
+    x = _optimizar(lambda z: _nll_dataset(data, pred(z)), (
+        np.array([np.pi / 4, np.pi / 4]),
+        np.array([0.2, 0.8]),
+        np.array([0.8, 0.2]),
+        np.array([1.2, 1.2]),
+    ))
+    return pred(x)
+
+
+def ajustar_quantum_like(data: S002Dataset) -> Tuple[np.ndarray, np.ndarray]:
+    """Ajusta theta_A, theta_B y ruido efectivo."""
+    def pred(x):
+        return modelo_quantum_like(
+            ruido=float(_sigmoid(x[2])),
+            theta_a=float(x[0]),
+            theta_b=float(x[1]),
+        )
+
+    x = _optimizar(lambda z: _nll_dataset(data, pred(z)), (
+        np.array([np.pi / 4, np.pi / 4, -2.0]),
+        np.array([0.2, 0.8, -1.0]),
+        np.array([0.8, 0.2, 0.0]),
+        np.array([1.2, 1.2, 1.0]),
+    ))
+    return pred(x)
+
+
+def ajustar_modelos_s002(data_train: S002Dataset) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+    """Ajusta todas las familias exclusivamente sobre train."""
+    return {
+        "clasico_estatico": ajustar_clasico_estatico(data_train),
+        "clasico_secuencial": ajustar_clasico_secuencial(data_train),
+        "vectorial_unitario": ajustar_vectorial_unitario(data_train),
+        "quantum_like": ajustar_quantum_like(data_train),
+    }
+
+
+def evaluar_train_test_s002(train: S002Dataset, test: S002Dataset) -> Dict[str, Dict[str, float]]:
+    """Ajusta en train y calcula predicción fuera de muestra en test."""
+    pred = ajustar_modelos_s002(train)
+    n_params = {
+        "clasico_estatico": 1,
+        "clasico_secuencial": 5,
+        "vectorial_unitario": 2,
+        "quantum_like": 3,
+    }
+    resultados = evaluar_predicciones(test, pred, n_params)
+    for nombre, (p_ab, p_ba) in pred.items():
+        ll = (
+            log_likelihood_multinomial(train.counts_ab, p_ab)
+            + log_likelihood_multinomial(train.counts_ba, p_ba)
+        )
+        resultados[nombre]["log_likelihood_train"] = ll
+        resultados[nombre]["AIC_train"] = aic(ll, n_params[nombre])
+        resultados[nombre]["BIC_train"] = bic(ll, n_params[nombre], train.n_ab + train.n_ba)
+    return resultados
+
+
+def benchmark_ajustado_s002(
+    data: S002Dataset | None = None,
+    proporcion_train: float = 0.8,
+    seed_split: int = 2026,
+) -> Dict[str, Dict[str, float]]:
+    """Ejecuta split, ajuste y evaluación fuera de muestra."""
+    data = data or generar_datos_s002()
+    train, test = dividir_train_test(data, proporcion_train, seed_split)
+    return evaluar_train_test_s002(train, test)
+
 def benchmark_s002(
     data: S002Dataset | None = None,
 ) -> Dict[str, Dict[str, float]]:
