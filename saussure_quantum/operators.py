@@ -161,7 +161,7 @@ class OperadorDiferencia:
         valor = np.vdot(psi, self._matriz @ psi)
         return float(valor.real)
     
-    def medir_diferencia(self, estado: SignoCuanto) -> Tuple[float, SignoCuanto]:
+    def medir_diferencia(self, estado: SignoCuanto, seed: Optional[int] = None) -> Tuple[float, SignoCuanto]:
         """
         Mide el observable diferencia, colapsando el estado.
         
@@ -179,7 +179,8 @@ class OperadorDiferencia:
         probabilidades = np.abs(eigenvecs.conj().T @ psi) ** 2
         
         # Seleccionar autovalor según probabilidad
-        idx = np.random.choice(len(eigenvals), p=probabilidades)
+        rng = np.random.default_rng(seed)
+        idx = int(rng.choice(len(eigenvals), p=probabilidades))
         valor_medido = float(eigenvals[idx].real)
         
         # Colapsar al autovector correspondiente
@@ -211,13 +212,16 @@ def similitud_diferencial(estado1: SignoCuanto, estado2: SignoCuanto) -> float:
     if estado1.dimension != estado2.dimension:
         raise ValueError("Dimensiones incompatibles")
     
-    # Normalizar si no lo están
-    estado1.normalizar()
-    estado2.normalizar()
+    # La función es analítica: no debe mutar los estados de entrada.
+    # Ambos estados se normalizan conceptualmente mediante sus normas locales.
+    norma1 = np.linalg.norm(estado1.amplitudes)
+    norma2 = np.linalg.norm(estado2.amplitudes)
+    if norma1 <= 0 or norma2 <= 0:
+        raise ValueError("No se puede calcular similitud con un estado nulo.")
     
     # Similitud coseno = |⟨ψ|φ⟩|
-    solapamiento = abs(np.vdot(estado1.amplitudes, estado2.amplitudes))
-    return float(solapamiento)
+    solapamiento = abs(np.vdot(estado1.amplitudes, estado2.amplitudes)) / (norma1 * norma2)
+    return float(np.clip(solapamiento, 0.0, 1.0))
 
 
 def principio_negatividad(estado: SignoCuanto) -> dict:
