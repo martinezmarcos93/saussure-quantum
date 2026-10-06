@@ -23,19 +23,30 @@ class ContextoEnunciativo:
     """
     temperatura_semantica: float = 1.0  # Ruido/indeterminación (0=frío, 1=caliente)
     intencionalidad: Optional[List[float]] = None  # Sesgo hacia ciertos significantes
-    ruido_ambiental: float = 0.0  # Probabilidad de error en la medición
-    
+    ruido_ambiental: float = 0.0  # Magnitud de ruido añadido a la distribución
+
     def __post_init__(self):
+        if not np.isfinite(self.temperatura_semantica) or self.temperatura_semantica <= 0:
+            raise ValueError("temperatura_semantica debe ser un número finito > 0.")
+        if not np.isfinite(self.ruido_ambiental) or not 0 <= self.ruido_ambiental <= 1:
+            raise ValueError("ruido_ambiental debe estar en [0, 1].")
         if self.intencionalidad is not None:
-            # Normalizar intencionalidad
-            self.intencionalidad = np.array(self.intencionalidad, dtype=float)
-            self.intencionalidad = self.intencionalidad / np.sum(self.intencionalidad)
+            self.intencionalidad = np.asarray(self.intencionalidad, dtype=float)
+            if self.intencionalidad.ndim != 1 or self.intencionalidad.size == 0:
+                raise ValueError("intencionalidad debe ser un vector no vacío.")
+            if not np.all(np.isfinite(self.intencionalidad)) or np.any(self.intencionalidad < 0):
+                raise ValueError("intencionalidad debe contener valores finitos no negativos.")
+            suma = float(np.sum(self.intencionalidad))
+            if suma <= 0:
+                raise ValueError("intencionalidad debe tener suma estrictamente positiva.")
+            self.intencionalidad = self.intencionalidad / suma
 
 
 def colapso_parole(
     estado: SignoCuanto, 
     contexto: Optional[ContextoEnunciativo] = None,
-    indice_forzado: Optional[int] = None
+    indice_forzado: Optional[int] = None,
+    seed: Optional[int] = None,
 ) -> Tuple[str, SignoCuanto, Dict[str, Any]]:
     """
     ACTO DE PAROLE: Colapsa la superposición lingüística a un significante.
@@ -59,6 +70,12 @@ def colapso_parole(
     if contexto is None:
         contexto = ContextoEnunciativo()
     
+    if contexto.intencionalidad is not None and len(contexto.intencionalidad) != estado.dimension:
+        raise ValueError("La intencionalidad debe tener la misma dimensión que el estado.")
+    if indice_forzado is not None and not 0 <= indice_forzado < estado.dimension:
+        raise IndexError(f"Índice forzado fuera de rango: {indice_forzado}")
+    rng = np.random.default_rng(seed)
+
     # 1. Obtener probabilidades base del estado
     probabilidades_base = np.abs(estado.amplitudes) ** 2
     
@@ -83,7 +100,7 @@ def colapso_parole(
     
     # 4. Aplicar ruido ambiental
     if contexto.ruido_ambiental > 0:
-        ruido = np.random.uniform(0, contexto.ruido_ambiental, len(probabilidades))
+        ruido = rng.uniform(0, contexto.ruido_ambiental, len(probabilidades))
         probabilidades = probabilidades + ruido
         probabilidades = probabilidades / np.sum(probabilidades)
     
@@ -91,7 +108,7 @@ def colapso_parole(
     if indice_forzado is not None:
         idx = indice_forzado
     else:
-        idx = np.random.choice(estado.dimension, p=probabilidades)
+        idx = int(rng.choice(estado.dimension, p=probabilidades))
     
     # 6. Colapsar el estado.
     # Se construye el vector colapsado antes de llamar al constructor para
@@ -255,6 +272,10 @@ def medicion_debil(
 
     Returns:
         (significante_final, estado_final, registro_de_evolucion)
+
+    Nota epistemológica: esta función es un modelo heurístico de colapso
+    gradual. No implementa una medición débil canónica mediante operadores
+    POVM/Kraus y no debe interpretarse como tal.
     """
     registro = []
     estado_actual = SignoCuanto(estado.significantes.copy(), estado.amplitudes.copy())
