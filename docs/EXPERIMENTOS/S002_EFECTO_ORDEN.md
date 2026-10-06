@@ -80,7 +80,36 @@ La existencia de AB ≠ BA sólo demuestra que el formalismo implementado es no 
 5. reportar incertidumbre y tamaño de efecto;
 6. aceptar explícitamente un resultado nulo si el baseline clásico explica los datos igual o mejor.
 
-El siguiente paso es construir el benchmark sintético S002 y su protocolo de comparación de modelos.
+### Ajuste y evaluación fuera de muestra
+
+`benchmark_ajustado_s002()` divide el dataset en train/test, ajusta cada familia exclusivamente sobre train y calcula las métricas predictivas sobre test.
+
+Los parámetros ajustados son:
+
+- clásico estático: una probabilidad compartida;
+- clásico secuencial: estado inicial + dos canales estocásticos binarios, cinco parámetros;
+- vectorial unitario: θ_A y θ_B, manteniendo X/Z como generadores del control;
+- quantum-like: θ_A, θ_B y ruido efectivo.
+
+El split es reproducible mediante una semilla. El ajuste usa múltiples inicializaciones deterministas para reducir la dependencia de un único punto inicial.
+
+La lectura correcta de los resultados es:
+
+1. `log_likelihood_train`, `AIC_train` y `BIC_train` describen el ajuste penalizado sobre los datos usados para estimar los parámetros.
+2. `log_likelihood`, `L1_medio` y `JS_medio` corresponden al conjunto test y son las métricas principales de generalización.
+3. Un menor AIC/BIC no reemplaza la evaluación fuera de muestra.
+4. Una ventaja quantum-like sólo sería relevante si persiste fuera de muestra frente a los baselines y no desaparece al introducir un modelo clásico suficientemente flexible.
+
+### Limitación de identificabilidad
+
+El dataset S002 sigue siendo deliberadamente pequeño en estructura: sólo observa la distribución final de cada orden. Por ello, el modelo clásico secuencial de cinco parámetros puede estar débilmente identificado con datos agregados. El AIC/BIC penaliza esta complejidad, pero no convierte mágicamente el problema en identificable.
+
+Una futura versión experimental deberá registrar también estados intermedios, por ejemplo después de A y después de B, o utilizar múltiples condiciones/contextos. Eso permitirá estimar mejor las transiciones clásicas y distinguir entre explicaciones dinámicas alternativas.
+
+### Próximo control científico
+
+El siguiente escalón no debe ser "probar que gana quantum-like", sino comprobar recuperación de modelo generador. Se generarán datasets bajo varios regímenes conocidos —sin efecto de orden, clásico secuencial y unitario/quantum-like— y se verificará si el procedimiento de selección recupera correctamente el régimen cuando dispone de información suficiente.
+
 
 
 ## Benchmark computacional S002
