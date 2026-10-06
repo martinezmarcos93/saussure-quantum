@@ -57,7 +57,7 @@ def test_contextos_no_conmutativos_producen_efecto_de_orden():
     Z = np.array([[1, 0], [0, -1]], dtype=complex)
 
     resultado = efecto_orden_no_conmutativo(
-        estado, X, Z, np.pi / 2, np.pi / 2
+        estado, X, Z, np.pi / 4, np.pi / 4
     )
 
     assert resultado["norma_conmutador"] > 0
