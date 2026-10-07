@@ -167,9 +167,13 @@ arquetipo
 
 ## 10. Estado actual
 
-La cartografía preliminar es suficiente para iniciar la fase de ingestión técnica.
+La cartografía preliminar ya pasó a fase de implementación.
+
+P0-A dispone de un fixture humano inicial y mantiene Rose–Jackson como control de límites.
+
+P0-B dispone de especificación experimental, observaciones canónicas, adapter CSV, capa descriptiva y tests unitarios. La ingestión del archivo real queda pendiente de ejecución local porque requiere descargar el dataset OSF y verificar físicamente su esquema y conteos.
 
 No se considera que ningún dataset haya demostrado todavía una estructura quantum-like.
 
-El primer objetivo empírico es reproducir y auditar S003 sobre datos humanos reales.
+El primer objetivo empírico sigue siendo reproducir y auditar S003 sobre datos humanos reales y, en paralelo, caracterizar la estructura asociativa del P0-B sin imponer una teoría previa.
 
