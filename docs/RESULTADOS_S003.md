@@ -23,7 +23,7 @@ Todos los datos son sintéticos. Ningún resultado de este documento es evidenci
 | El modelo proyectivo cumple además las cotas de Cauchy–Schwarz | VALIDADO MATEMÁTICAMENTE (condición necesaria) |
 | Esas cotas delimitan exactamente lo alcanzable dentro del plano QQ | VALIDADO COMPUTACIONALMENTE (30 de 30 puntos); no demostrado |
 | La repetición simétrica es clásica, cumple QQ y tiene efecto de orden | VALIDADO MATEMÁTICAMENTE |
-| El Markov clásico de dos estados es saturado y reproduce las distribuciones proyectivas | VALIDADO COMPUTACIONALMENTE (rango 6; error de ajuste < 1e-9) |
+| El Markov clásico de dos estados es localmente saturado y reproduce los regímenes proyectivos probados | VALIDADO COMPUTACIONALMENTE (rango 6; ajustes de referencia < 1e-9; saturación global no demostrada) |
 | El test z de QQ tiene nivel 0.05 y la potencia analítica | VALIDADO COMPUTACIONALMENTE |
 | Clase clásica frente a clase proyectiva | NO IDENTIFICABLE con este diseño |
 | Fase, pureza, dimensión y rango del modelo proyectivo | NO IDENTIFICABLE |
@@ -51,7 +51,7 @@ Todos los datos son sintéticos. Ningún resultado de este documento es evidenci
 
 **9. ¿Existe una ventaja predictiva real?** Sólo la de la parsimonia. Con datos proyectivos, el modelo restringido a QQ predice fuera de muestra igual que el saturado (−483.13 frente a −483.14) y el qubit lo supera por 0.37 unidades de log-verosimilitud (−368.64 frente a −369.01), el margen esperable por ahorrar tres parámetros.
 
-**10. ¿O QQ caracteriza una clase de distribuciones que también genera un modelo clásico?** Esto. QQ define un hiperplano de dimensión 5 en un espacio de 6. Los modelos proyectivos ocupan cerca del 30 % de ese hiperplano; el resto sólo es alcanzable clásicamente. Y todo lo que alcanza un modelo proyectivo lo alcanza también uno clásico.
+**10. ¿O QQ caracteriza una clase de distribuciones que también genera un modelo clásico?** Esto. QQ define un hiperplano de dimensión 5 en un espacio de 6. En la exploración numérica empleada, aproximadamente el 30 % de los puntos muestreados del hiperplano resultó compatible con el modelo proyectivo; esta fracción depende del esquema de muestreo y no es una medida geométrica universal. Y todo lo que alcanza un modelo proyectivo lo alcanza también uno clásico.
 
 ## Estructura de las familias
 
@@ -80,12 +80,12 @@ Fracción compatible con algún modelo proyectivo:
 
 | Conjunto | Fracción compatible |
 |---|---:|
-| Plano QQ (muestreo uniforme en su parametrización) | 0.302 ± 0.002 |
+| Plano QQ (esquema de muestreo usado en esta exploración) | 0.302 ± 0.002 |
 | Repetición simétrica, (a, b, κ) uniformes | 0.574 |
 | Repetición simétrica con κ = 0.1 / 0.4 / 0.8 | 0.88 / 0.65 / 0.34 |
 | Sin orden | 1.000 |
 
-El modelo proyectivo hace, por tanto, **dos** predicciones contrastables: la igualdad QQ y las cotas. Un régimen clásico (`repeticion_incompatible`) pasa la primera y falla la segunda.
+El modelo proyectivo tiene, por tanto, **dos restricciones contrastables en este análisis**: la igualdad QQ y las cotas necesarias de Cauchy–Schwarz. La suficiencia de estas cotas sigue abierta. Un régimen clásico (`repeticion_incompatible`) pasa la primera y falla la segunda.
 
 ## El test de QQ
 
