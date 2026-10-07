@@ -10,6 +10,27 @@ compara cuatro familias:
 El benchmark es metodológico: un resultado favorable al modelo quantum-like
 sólo es relevante si mejora ajuste/predicción fuera de muestra bajo una
 penalización de complejidad razonable.
+
+Identificabilidad (resultado analítico, verificado en tests/test_s002_identificabilidad.py)
+---------------------------------------------------------------------------------------
+Los datos son binarios y se observan sólo dos órdenes: hay exactamente DOS
+números observables, (p_AB, p_BA). Con el control |+⟩, G_A = X, G_B = Z:
+
+- clásico estático:   p_AB = p_BA = p.                    Familia de dimensión 1.
+- clásico secuencial: alcanza cualquier par (p_AB, p_BA)   Familia de dimensión 2
+  (basta tomar canales constantes): es el modelo SATURADO.  aunque declare 5 parámetros.
+- vectorial unitario: p_AB ≡ 1/2 para todo θ (|+⟩ es autovector de X y U_B es
+  diagonal), y p_BA[0] = (1 + sin 2θ_A · sin 2θ_B)/2.       Familia de dimensión 1.
+- quantum-like:       p_AB ≡ 1/2, p_BA[0] = (1 + (1−r)·sin 2θ_A·sin 2θ_B)/2.
+  Es EXACTAMENTE la misma familia que la vectorial: el ruido r no es identificable.
+
+Consecuencias: (1) vectorial y quantum-like son observacionalmente equivalentes
+en este diseño; cualquier "ganador" entre ellos por verosimilitud es ruido del
+optimizador. (2) El modelo clásico secuencial reproduce cualquier dato binario
+de dos órdenes, de modo que este diseño no puede mostrar una ventaja
+quantum-like sobre él. (3) Los parámetros nominales (5, 2, 3) sobrestiman la
+dimensión de cada familia; por eso se informa además un BIC con parámetros
+efectivos. Los nominales se conservan para no alterar los resultados previos.
 """
 
 from __future__ import annotations
@@ -71,6 +92,46 @@ REGIMENES_S002 = (
     "vectorial_unitario",
     "quantum_like",
 )
+
+# Familia de modelos que corresponde a cada régimen generador. El régimen
+# "sin_orden" se genera con el modelo clásico estático.
+MODELO_DE_REGIMEN = {
+    "sin_orden": "clasico_estatico",
+    "clasico_secuencial": "clasico_secuencial",
+    "vectorial_unitario": "vectorial_unitario",
+    "quantum_like": "quantum_like",
+}
+
+# Parámetros declarados por cada familia (los usados históricamente en AIC/BIC).
+N_PARAMS_NOMINALES = {
+    "clasico_estatico": 1,
+    "clasico_secuencial": 5,
+    "vectorial_unitario": 2,
+    "quantum_like": 3,
+}
+
+# Dimensión de la familia de distribuciones observables (p_AB, p_BA) que cada
+# modelo puede producir: rango del jacobiano de la predicción respecto de los
+# parámetros. Ver el docstring del módulo.
+N_PARAMS_EFECTIVOS = {
+    "clasico_estatico": 1,
+    "clasico_secuencial": 2,
+    "vectorial_unitario": 1,
+    "quantum_like": 1,
+}
+
+# Familias que predicen exactamente el mismo conjunto de distribuciones.
+CLASE_OBSERVACIONAL = {
+    "clasico_estatico": "estatico",
+    "clasico_secuencial": "saturado",
+    "vectorial_unitario": "unitario_xz",
+    "quantum_like": "unitario_xz",
+}
+
+# Diferencia de log-verosimilitud (o de BIC) por debajo de la cual dos modelos
+# se consideran empatados. Muy inferior a cualquier diferencia estadísticamente
+# relevante y muy superior al ruido del optimizador (~1e-6).
+TOLERANCIA_EMPATE = 1e-3
 
 
 def probabilidades_regimen_s002(
@@ -212,7 +273,12 @@ def modelo_vectorial_unitario(
     theta_a: float = np.pi / 4,
     theta_b: float = np.pi / 4,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Modelo vectorial unitario; conserva fases pero no usa la semántica de rho."""
+    """Modelo vectorial unitario; conserva fases pero no usa la semántica de rho.
+
+    Con los valores por defecto (|+⟩, G_A = X, G_B = Z) la predicción es
+    p_AB = (1/2, 1/2) para todo θ y p_BA[0] = (1 + sin 2θ_A · sin 2θ_B)/2:
+    sólo el producto sin 2θ_A · sin 2θ_B es identificable.
+    """
     from scipy.linalg import expm
 
     psi = np.asarray(tuple(amplitud_inicial), dtype=complex)
@@ -244,6 +310,11 @@ def modelo_quantum_like(
 
     Es deliberadamente simple: permite separar el control vectorial puro
     de una representación que admite pérdida de coherencia/indeterminación.
+
+    Limitación: con datos binarios de dos órdenes el ruido NO es identificable.
+    La predicción p_BA[0] = (1 + (1−r)·sin 2θ_A·sin 2θ_B)/2 recorre el mismo
+    intervalo [0, 1] que el modelo vectorial, y p_AB sigue siendo 1/2. Ambas
+    familias son observacionalmente equivalentes en este diseño.
     """
     if not 0 <= ruido <= 1:
         raise ValueError("ruido debe estar en [0, 1].")
@@ -374,13 +445,9 @@ def ajustar_modelos_s002(data_train: S002Dataset) -> Dict[str, Tuple[np.ndarray,
 def evaluar_train_test_s002(train: S002Dataset, test: S002Dataset) -> Dict[str, Dict[str, float]]:
     """Ajusta en train y calcula predicción fuera de muestra en test."""
     pred = ajustar_modelos_s002(train)
-    n_params = {
-        "clasico_estatico": 1,
-        "clasico_secuencial": 5,
-        "vectorial_unitario": 2,
-        "quantum_like": 3,
-    }
+    n_params = N_PARAMS_NOMINALES
     resultados = evaluar_predicciones(test, pred, n_params)
+    n_train = train.n_ab + train.n_ba
     for nombre, (p_ab, p_ba) in pred.items():
         ll = (
             log_likelihood_multinomial(train.counts_ab, p_ab)
@@ -388,7 +455,11 @@ def evaluar_train_test_s002(train: S002Dataset, test: S002Dataset) -> Dict[str, 
         )
         resultados[nombre]["log_likelihood_train"] = ll
         resultados[nombre]["AIC_train"] = aic(ll, n_params[nombre])
-        resultados[nombre]["BIC_train"] = bic(ll, n_params[nombre], train.n_ab + train.n_ba)
+        resultados[nombre]["BIC_train"] = bic(ll, n_params[nombre], n_train)
+        # Mismo criterio con la dimensión real de la familia observable.
+        k_ef = N_PARAMS_EFECTIVOS[nombre]
+        resultados[nombre]["AIC_train_efectivo"] = aic(ll, k_ef)
+        resultados[nombre]["BIC_train_efectivo"] = bic(ll, k_ef, n_train)
     return resultados
 
 
@@ -407,20 +478,57 @@ def seleccionar_modelo_s002(
     resultados: Dict[str, Dict[str, float]],
     criterio: str = "test_log_likelihood",
 ) -> str:
-    """Selecciona el modelo ganador según un criterio explícito."""
+    """Selecciona el modelo ganador según un criterio explícito.
+
+    Devuelve siempre UN nombre. En caso de empate gana el primero en el orden
+    del diccionario, y diferencias del orden del ruido del optimizador (~1e-6)
+    bastan para decidir. Para saber si el ganador es distinguible de los demás
+    usar `modelos_empatados_s002`.
+    """
+    clave, mayor_es_mejor = _clave_criterio(criterio)
     if not resultados:
         raise ValueError("resultados no puede estar vacío.")
-    if criterio == "test_log_likelihood":
-        return max(resultados, key=lambda n: resultados[n]["log_likelihood"])
-    if criterio == "test_L1":
-        return min(resultados, key=lambda n: resultados[n]["L1_medio"])
-    if criterio == "test_JS":
-        return min(resultados, key=lambda n: resultados[n]["JS_medio"])
-    if criterio == "train_BIC":
-        return min(resultados, key=lambda n: resultados[n]["BIC_train"])
-    raise ValueError(
-        "criterio debe ser test_log_likelihood, test_L1, test_JS o train_BIC."
-    )
+    elegir = max if mayor_es_mejor else min
+    return elegir(resultados, key=lambda n: resultados[n][clave])
+
+
+_CRITERIOS_S002 = {
+    "test_log_likelihood": ("log_likelihood", True),
+    "test_L1": ("L1_medio", False),
+    "test_JS": ("JS_medio", False),
+    "train_BIC": ("BIC_train", False),
+    "train_BIC_efectivo": ("BIC_train_efectivo", False),
+}
+
+
+def _clave_criterio(criterio: str) -> Tuple[str, bool]:
+    if criterio not in _CRITERIOS_S002:
+        raise ValueError(
+            "criterio debe ser test_log_likelihood, test_L1, test_JS, "
+            "train_BIC o train_BIC_efectivo."
+        )
+    return _CRITERIOS_S002[criterio]
+
+
+def modelos_empatados_s002(
+    resultados: Dict[str, Dict[str, float]],
+    criterio: str = "test_log_likelihood",
+    tolerancia: float = TOLERANCIA_EMPATE,
+) -> Tuple[str, ...]:
+    """Modelos indistinguibles del mejor según el criterio, en orden estable.
+
+    Si devuelve más de un nombre, los datos no permiten elegir entre ellos y
+    el resultado debe informarse como empate (equivalencia observacional o
+    falta de información), no como una clasificación.
+    """
+    clave, mayor_es_mejor = _clave_criterio(criterio)
+    if not resultados:
+        raise ValueError("resultados no puede estar vacío.")
+    if tolerancia < 0:
+        raise ValueError("tolerancia debe ser >= 0.")
+    valores = {n: r[clave] for n, r in resultados.items()}
+    mejor = max(valores.values()) if mayor_es_mejor else min(valores.values())
+    return tuple(n for n, v in valores.items() if abs(v - mejor) <= tolerancia)
 
 
 def evaluar_recuperacion_s002(
@@ -429,25 +537,43 @@ def evaluar_recuperacion_s002(
     n_por_orden: int = 1000,
     seed: int = 2026,
     proporcion_train: float = 0.8,
+    ruido: float = 0.05,
 ) -> Dict[str, object]:
     """Evalúa con qué frecuencia el procedimiento recupera un régimen conocido.
 
     Esto no presupone que el régimen verdadero sea identificable: una baja
     recuperación es un resultado científico válido y puede revelar que dos
     familias son observacionalmente equivalentes con los datos disponibles.
+
+    Además de la selección estricta (un único ganador, con desempate por orden)
+    se informa:
+
+    - `frecuencia_bic_efectivo`: selección por BIC con la dimensión real de
+      cada familia (`N_PARAMS_EFECTIVOS`);
+    - `empates_test` / `empates_bic_efectivo`: réplicas en las que el ganador
+      empata con otro modelo dentro de `TOLERANCIA_EMPATE`;
+    - `recuperacion_clase_*`: proporción de réplicas en las que la CLASE de
+      equivalencia observacional del régimen verdadero está entre las ganadoras.
+      Es la única recuperación exigible cuando dos familias predicen lo mismo.
     """
     if regimen not in REGIMENES_S002:
         raise ValueError(f"Régimen desconocido: {regimen!r}.")
     if n_replicas < 1:
         raise ValueError("n_replicas debe ser >= 1.")
 
+    modelo_verdadero = MODELO_DE_REGIMEN[regimen]
+    clase_verdadera = CLASE_OBSERVACIONAL[modelo_verdadero]
     seleccion_test: Dict[str, int] = {}
     seleccion_bic: Dict[str, int] = {}
+    seleccion_bic_ef: Dict[str, int] = {}
+    empates_test = empates_bic_ef = 0
+    clase_test = clase_bic = clase_bic_ef = 0
     for i in range(n_replicas):
         data = generar_datos_regimen_s002(
             regimen,
             n_por_orden=n_por_orden,
             seed=seed + i,
+            ruido=ruido,
         )
         train, test = dividir_train_test(
             data,
@@ -457,16 +583,38 @@ def evaluar_recuperacion_s002(
         resultados = evaluar_train_test_s002(train, test)
         ganador_test = seleccionar_modelo_s002(resultados, "test_log_likelihood")
         ganador_bic = seleccionar_modelo_s002(resultados, "train_BIC")
+        ganador_bic_ef = seleccionar_modelo_s002(resultados, "train_BIC_efectivo")
         seleccion_test[ganador_test] = seleccion_test.get(ganador_test, 0) + 1
         seleccion_bic[ganador_bic] = seleccion_bic.get(ganador_bic, 0) + 1
+        seleccion_bic_ef[ganador_bic_ef] = seleccion_bic_ef.get(ganador_bic_ef, 0) + 1
+
+        empatados_test = modelos_empatados_s002(resultados, "test_log_likelihood")
+        empatados_bic_ef = modelos_empatados_s002(resultados, "train_BIC_efectivo")
+        empates_test += len(empatados_test) > 1
+        empates_bic_ef += len(empatados_bic_ef) > 1
+        clase_test += clase_verdadera in {CLASE_OBSERVACIONAL[m] for m in empatados_test}
+        clase_bic += CLASE_OBSERVACIONAL[ganador_bic] == clase_verdadera
+        clase_bic_ef += clase_verdadera in {CLASE_OBSERVACIONAL[m] for m in empatados_bic_ef}
 
     return {
         "regimen_verdadero": regimen,
+        "modelo_verdadero": modelo_verdadero,
+        "clase_observacional": clase_verdadera,
         "n_replicas": n_replicas,
         "frecuencia_test": seleccion_test,
         "frecuencia_bic": seleccion_bic,
-        "recuperacion_test": seleccion_test.get(regimen, 0) / n_replicas,
-        "recuperacion_bic": seleccion_bic.get(regimen, 0) / n_replicas,
+        "frecuencia_bic_efectivo": seleccion_bic_ef,
+        # Selección estricta del modelo generador. Antes se buscaba el nombre
+        # del RÉGIMEN entre nombres de MODELOS, por lo que "sin_orden" (cuyo
+        # modelo es "clasico_estatico") daba recuperación 0 por construcción.
+        "recuperacion_test": seleccion_test.get(modelo_verdadero, 0) / n_replicas,
+        "recuperacion_bic": seleccion_bic.get(modelo_verdadero, 0) / n_replicas,
+        "recuperacion_bic_efectivo": seleccion_bic_ef.get(modelo_verdadero, 0) / n_replicas,
+        "empates_test": int(empates_test),
+        "empates_bic_efectivo": int(empates_bic_ef),
+        "recuperacion_clase_test": clase_test / n_replicas,
+        "recuperacion_clase_bic": clase_bic / n_replicas,
+        "recuperacion_clase_bic_efectivo": clase_bic_ef / n_replicas,
     }
 
 
@@ -475,6 +623,8 @@ def matriz_recuperacion_s002(
     n_replicas: int = 20,
     n_por_orden: int = 1000,
     seed: int = 2026,
+    proporcion_train: float = 0.8,
+    ruido: float = 0.05,
 ) -> Dict[str, Dict[str, object]]:
     """Construye la matriz de recuperación para todos los regímenes."""
     regimenes = tuple(regimenes)
@@ -487,6 +637,8 @@ def matriz_recuperacion_s002(
             n_replicas=n_replicas,
             n_por_orden=n_por_orden,
             seed=seed + i * 100000,
+            proporcion_train=proporcion_train,
+            ruido=ruido,
         )
         for i, regimen in enumerate(regimenes)
     }
@@ -494,7 +646,13 @@ def matriz_recuperacion_s002(
 def benchmark_s002(
     data: S002Dataset | None = None,
 ) -> Dict[str, Dict[str, float]]:
-    """Ejecuta el benchmark con modelos controlados."""
+    """Ejecuta el benchmark con modelos controlados (parámetros FIJOS, sin ajustar).
+
+    No es una comparación de familias: cada modelo usa valores por defecto
+    arbitrarios y el dataset por defecto está generado cerca de la predicción
+    quantum-like por defecto, que por eso obtiene el mejor ajuste. Sirve para
+    comprobar que las métricas se calculan, no para concluir qué modelo es mejor.
+    """
     data = data or generar_datos_s002()
     pred = {
         "clasico_estatico": baseline_clasico_estatico(),
@@ -502,10 +660,4 @@ def benchmark_s002(
         "vectorial_unitario": modelo_vectorial_unitario(),
         "quantum_like": modelo_quantum_like(),
     }
-    params = {
-        "clasico_estatico": 1,
-        "clasico_secuencial": 5,
-        "vectorial_unitario": 2,
-        "quantum_like": 3,
-    }
-    return evaluar_predicciones(data, pred, params)
+    return evaluar_predicciones(data, pred, N_PARAMS_NOMINALES)
