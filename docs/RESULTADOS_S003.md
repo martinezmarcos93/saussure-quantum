@@ -51,7 +51,7 @@ Todos los datos son sintéticos. Ningún resultado de este documento es evidenci
 
 **9. ¿Existe una ventaja predictiva real?** Sólo la de la parsimonia. Con datos proyectivos, el modelo restringido a QQ predice fuera de muestra igual que el saturado (−483.13 frente a −483.14) y el qubit lo supera por 0.37 unidades de log-verosimilitud (−368.64 frente a −369.01), el margen esperable por ahorrar tres parámetros.
 
-**10. ¿O QQ caracteriza una clase de distribuciones que también genera un modelo clásico?** Esto. QQ define un hiperplano de dimensión 5 en un espacio de 6. En la exploración numérica empleada, aproximadamente el 30 % de los puntos muestreados del hiperplano resultó compatible con el modelo proyectivo; esta fracción depende del esquema de muestreo y no es una medida geométrica universal. Y todo lo que alcanza un modelo proyectivo lo alcanza también uno clásico.
+**10. ¿O QQ caracteriza una clase de distribuciones que también genera un modelo clásico?** Esto. QQ define un hiperplano de dimensión 5 en un espacio de 6. En la exploración numérica empleada, aproximadamente el 30 % de los puntos muestreados del hiperplano resultó compatible con el modelo proyectivo; esta fracción depende del esquema de muestreo y no es una medida geométrica universal. Los regímenes proyectivos probados también fueron reproducidos por el Markov de dos estados; la inclusión global de familias sigue sin demostración.
 
 ## Estructura de las familias
 
@@ -62,7 +62,7 @@ Dimensión de la familia de distribuciones observables (rango del jacobiano), so
 | Sin orden (clásico) | 3 | sí |
 | Repetición simétrica (clásico) | 3 | sí |
 | Repetición asimétrica (clásico) | 4 | no |
-| Markov, 2 o 3 estados latentes (clásico) | 6 | no |
+| Markov, 2 estados latentes (rango local observado) | 6 | no |
 | Proyectivo, dimensión 2, rango 1 | 3 | sí |
 | Proyectivo, dimensión 3, rangos 1 y 2; dimensión 4, rango 1 | 4 | sí |
 | Proyectivo, dimensión 4 rango 2; dimensión 5 rango 2; dimensión 6 rango 3 | 5 | sí |
