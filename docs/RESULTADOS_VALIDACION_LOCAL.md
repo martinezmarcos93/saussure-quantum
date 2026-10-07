@@ -306,6 +306,24 @@ Un modelo clásico secuencial genérico viola esa igualdad. Ese diseño tiene tr
 4. **Más de dos contextos o dimensión mayor que 2**, de forma que el modelo clásico deje de ser saturado.
 5. **Reparametrizar o retirar el modelo quantum-like con ruido** mientras los datos no permitan identificar r; mantenerlo sólo si el diseño incluye una condición que lo separe del vectorial.
 
+## Actualización: S003 (2026-10-07)
+
+Los "próximos experimentos" 1 a 3 de la sección anterior se ejecutaron como S003. Resumen; el detalle está en [`docs/RESULTADOS_S003.md`](RESULTADOS_S003.md).
+
+| Etiqueta | Resultado |
+|---|---|
+| VALIDADO MATEMÁTICAMENTE | Todo modelo proyectivo cumple la igualdad QQ; el modelo clásico de repetición simétrica también. |
+| VALIDADO COMPUTACIONALMENTE | El test de QQ tiene nivel 0.043–0.056 y la potencia analítica; el Markov clásico de dos estados es saturado; las cotas de Cauchy–Schwarz delimitan lo alcanzable por un modelo proyectivo. |
+| NO IDENTIFICABLE | Clase clásica frente a clase proyectiva; fase, pureza, dimensión y rango del modelo proyectivo. |
+| RESULTADO NEGATIVO | La igualdad QQ no discrimina modelos clásicos de quantum-like. |
+| RESULTADO POSITIVO | QQ y las cotas son predicciones falsables del modelo proyectivo; el diseño de respuestas conjuntas recupera la familia generadora con n ≈ 5 000 por orden. |
+| EVIDENCIA EMPÍRICA | Ninguna. |
+| NO TESTEADO | Datos humanos. |
+
+Una corrección a este mismo documento: la sección "Bajo qué condiciones la hipótesis sería falsable" decía que el diseño QQ permitiría separar el modelo quantum-like del clásico de Markov. S003 muestra que sólo lo separa del Markov *genérico*; un modelo clásico restringido cumple QQ y el Markov general reproduce cualquier distribución proyectiva. El texto original se conserva como registro.
+
+Regresión tras incorporar S003: 296 tests (163 previos sin modificar + 133 de S003), todos pasan. S001 y S002 no se tocaron.
+
 ## Limitaciones de esta auditoría
 
 - Todos los datos son sintéticos y generados por los propios modelos comparados.

@@ -321,6 +321,7 @@ saussure-quantum/
 - [x] Langue con términos personalizados
 - [x] Colapso gradual heurístico (no es medición débil POVM/Kraus)
 - [x] Benchmark S002 con ajuste train/test y recuperación de modelo generador (resultado: el diseño binario de dos órdenes no distingue quantum-like del baseline clásico)
+- [x] S003: respuestas conjuntas e igualdad QQ (resultado: QQ es falsable para el modelo proyectivo, pero un modelo clásico también la cumple y el Markov clásico es saturado; ver `docs/RESULTADOS_S003.md`)
 - [ ] Entrelazamiento semántico (correlaciones no locales)
 - [ ] Integración con Qiskit (hardware cuántico real)
 - [ ] Notebooks interactivos completos

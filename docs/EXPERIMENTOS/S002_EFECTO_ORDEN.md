@@ -209,6 +209,10 @@ La batería local se ejecutó el 2026-10-06/07. Resultados completos, tablas y c
 
 Lo que el código hace ahora con esto: informa parámetros efectivos y un BIC efectivo junto a los nominales, detecta empates (`modelos_empatados_s002`) en lugar de forzar un ganador, e informa la recuperación por clase observacional.
 
-## Siguiente experimento (S003)
+## Siguiente experimento (S003, ya ejecutado)
 
 Un diseño en el que el modelo quantum-like pueda fallar: registrar las dos respuestas en cada orden y contrastar la **igualdad QQ** (Wang y Busemeyer, 2013), que un modelo proyectivo predice sin parámetros libres y un modelo clásico de Markov genérico viola. Antes de usar datos reales deberá repetirse la recuperación de modelo sobre ese diseño.
+
+Hecho: ver [`S003_IGUALDAD_QQ.md`](S003_IGUALDAD_QQ.md) y [`docs/RESULTADOS_S003.md`](../RESULTADOS_S003.md). Una corrección a lo dicho arriba: el modelo clásico de Markov *genérico* viola la igualdad QQ, pero S003 muestra que un modelo clásico restringido la cumple y que el Markov general es saturado. La igualdad permite refutar el modelo proyectivo, no separar lo clásico de lo quantum-like.
+
+S002 se conserva sin cambios como benchmark de identificabilidad.

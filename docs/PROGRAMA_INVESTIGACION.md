@@ -48,23 +48,25 @@ Ejemplo:
     ├── nacimiento
     └── contaminación
 
-### S002 — Efecto de orden
+### S002 — Efecto de orden (cerrado: benchmark de identificabilidad)
 
-Presentar pares de preguntas/estímulos en órdenes A→B y B→A.
+Presentar pares de preguntas/estímulos en órdenes A→B y B→A y comparar la distribución de la respuesta final.
 
-Comparar la distribución de respuestas.
+Resultado metodológico negativo: con una respuesta binaria y dos órdenes el modelo clásico secuencial es saturado y el quantum-like no es distinguible del vectorial. Se conserva como benchmark de identificabilidad. Ver `docs/EXPERIMENTOS/S002_EFECTO_ORDEN.md`.
 
-### S003 — Interferencia semántica
+### S003 — Respuestas conjuntas e igualdad QQ (cerrado en su fase sintética)
 
-Determinar si una combinación contextual genera distribuciones que no se ajustan bien a una mezcla clásica.
+Registrar las dos respuestas de cada orden y contrastar la igualdad QQ de Wang y Busemeyer.
 
-### S004 — Composición
+Resultado: la igualdad es una predicción falsable del modelo proyectivo, pero no discrimina "clásico frente a cuántico". Ver `docs/EXPERIMENTOS/S003_IGUALDAD_QQ.md` y `docs/RESULTADOS_S003.md`.
 
-Representar dos conceptos y estudiar el estado resultante de su combinación.
+### Experimentos posteriores (no iniciados)
 
-### S005 — Contextualidad
+El orden y el contenido de los siguientes dependen de lo que S003 dejó establecido; ninguno debe empezar sin un análisis previo de identificabilidad.
 
-Determinar si un mismo signo requiere estados distintos para contextos distintos y si esa dependencia mejora la predicción.
+- **Interferencia semántica**: determinar si una combinación contextual genera distribuciones que no se ajustan a una mezcla clásica.
+- **Composición**: representar dos conceptos y estudiar el estado resultante de su combinación.
+- **Contextualidad**: determinar si un mismo signo requiere estados distintos para contextos distintos y si esa dependencia mejora la predicción.
 
 ## Puente con el Laboratorio Cuántico-Junguiano
 
@@ -97,6 +99,13 @@ Todo resultado debe incluir:
 
 El proyecto estudia modelos matemáticos inspirados en teoría cuántica. No afirma que el significado sea físicamente cuántico.
 
-## Próxima etapa
+## Estado
 
-Auditar la implementación existente y convertirla en una infraestructura experimental donde cada hipótesis pueda ejecutarse, compararse y reproducirse.
+| Etapa | Estado | Resultado |
+|---|---|---|
+| Auditoría de la implementación | Hecha | `docs/RESULTADOS_VALIDACION_LOCAL.md` |
+| S001 | Cerrado | El modelo diagonal es idéntico al baseline clásico |
+| S002 | Cerrado | Resultado negativo de diseño: no identificable |
+| S003 | Cerrado en fase sintética | QQ es falsable para el modelo proyectivo; no separa clases de modelos |
+
+El puente con el Laboratorio Cuántico-Junguiano queda en suspenso: ningún experimento ha mostrado todavía una señal quantum-like que lo justifique.
