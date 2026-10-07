@@ -21,7 +21,9 @@ class ContextoEnunciativo:
     
     Análogo al aparato de medición en mecánica cuántica.
     """
-    temperatura_semantica: float = 1.0  # Ruido/indeterminación (0=frío, 1=caliente)
+    # Exponente de afilado p_i ∝ p_i^(1/T): T<1 concentra, T=1 no altera, T>1 aplana.
+    # Valores por debajo de 0.01 se tratan como 0.01 para evitar overflow numérico.
+    temperatura_semantica: float = 1.0
     intencionalidad: Optional[List[float]] = None  # Sesgo hacia ciertos significantes
     ruido_ambiental: float = 0.0  # Magnitud de ruido añadido a la distribución
 
@@ -58,7 +60,13 @@ def colapso_parole(
         estado: Signo-cuanto en superposición (lengua potencial)
         contexto: Contexto enunciativo (aparato de medición)
         indice_forzado: Para pruebas, fuerza un resultado específico
-    
+        seed: Semilla del generador local. Mismo estado + mismo contexto +
+              misma semilla producen exactamente el mismo resultado.
+
+    Raises:
+        ValueError: si la intencionalidad es incompatible con el estado
+            (dimensión distinta o peso nulo sobre todo el soporte del estado).
+
     Returns:
         (significante_resultante, estado_colapsado, info_medicion)
     
@@ -83,11 +91,15 @@ def colapso_parole(
     if contexto.intencionalidad is not None:
         # Sesgo intencional del hablante
         probabilidades = probabilidades_base * contexto.intencionalidad
-        # Re-normalizar
-        if np.sum(probabilidades) > 0:
-            probabilidades = probabilidades / np.sum(probabilidades)
-        else:
-            probabilidades = probabilidades_base
+        # Re-normalizar. Si la intención sólo pondera significantes con
+        # probabilidad nula, el condicionamiento no está definido: antes se
+        # ignoraba la intención en silencio y se devolvía la distribución base.
+        if np.sum(probabilidades) <= 0:
+            raise ValueError(
+                "La intencionalidad asigna peso nulo a todos los significantes "
+                "con probabilidad no nula en el estado."
+            )
+        probabilidades = probabilidades / np.sum(probabilidades)
     else:
         probabilidades = probabilidades_base
     
@@ -125,7 +137,7 @@ def colapso_parole(
         "probabilidades_modificadas": probabilidades.tolist(),
         "indice_seleccionado": idx,
         "contexto_utilizado": contexto,
-        "incertidumbre_medicion": -np.sum(probabilidades * np.log(probabilidades + 1e-10))
+        "incertidumbre_medicion": float(-np.sum(probabilidades * np.log(probabilidades + 1e-10)))
     }
     
     return estado.significantes[idx], nuevo_estado, info
@@ -154,7 +166,8 @@ class MedidorParole:
         self, 
         estado: SignoCuanto, 
         contexto: Optional[ContextoEnunciativo] = None,
-        registrar: bool = True
+        registrar: bool = True,
+        seed: Optional[int] = None,
     ) -> Tuple[str, SignoCuanto]:
         """
         Realizar una medición (acto de parole).
@@ -163,12 +176,13 @@ class MedidorParole:
             estado: Estado a medir
             contexto: Contexto específico (opcional)
             registrar: Si se guarda en historial
-        
+            seed: Semilla opcional para una medición reproducible
+
         Returns:
             (significante, estado_colapsado)
         """
         ctx = contexto or self.contexto_base
-        resultado, nuevo_estado, info = colapso_parole(estado, ctx)
+        resultado, nuevo_estado, info = colapso_parole(estado, ctx, seed=seed)
         
         if registrar:
             self.historial.append({
@@ -191,7 +205,8 @@ class MedidorParole:
         self, 
         estado: SignoCuanto, 
         n_mediciones: int,
-        contexto: Optional[ContextoEnunciativo] = None
+        contexto: Optional[ContextoEnunciativo] = None,
+        seed: Optional[int] = None,
     ) -> Dict[str, float]:
         """
         Realizar múltiples mediciones del mismo estado.
@@ -202,17 +217,21 @@ class MedidorParole:
             estado: Estado a medir
             n_mediciones: Número de actos de parole
             contexto: Contexto (opcional)
-        
+            seed: Semilla opcional; con semilla, las frecuencias son reproducibles
+
         Returns:
             Frecuencias relativas de cada significante
         """
+        if isinstance(n_mediciones, bool) or not isinstance(n_mediciones, (int, np.integer)) or n_mediciones < 1:
+            raise ValueError("n_mediciones debe ser un entero >= 1.")
+        semillas = _semillas_hijas(seed, n_mediciones)
         resultados = []
         estado_original = SignoCuanto(estado.significantes.copy(), estado.amplitudes.copy())
         
-        for _ in range(n_mediciones):
+        for i in range(n_mediciones):
             # Restaurar estado original antes de cada medición
             estado_actual = SignoCuanto(estado_original.significantes.copy(), estado_original.amplitudes.copy())
-            resultado, _ = self.medir(estado_actual, contexto, registrar=False)
+            resultado, _ = self.medir(estado_actual, contexto, registrar=False, seed=semillas[i])
             resultados.append(resultado)
         
         # Calcular frecuencias
@@ -244,10 +263,18 @@ class MedidorParole:
         return -np.sum([p * np.log(p) for p in probs if p > 0])
 
 
+def _semillas_hijas(seed: Optional[int], n: int) -> List[Optional[int]]:
+    """Deriva n semillas independientes de una semilla madre (None → sin semilla)."""
+    if seed is None:
+        return [None] * n
+    return [int(x) for x in np.random.default_rng(seed).integers(0, 2**63 - 1, size=n)]
+
+
 def medicion_debil(
     estado: SignoCuanto,
     fuerza: float = 0.3,
-    n_pasos: int = 5
+    n_pasos: int = 5,
+    seed: Optional[int] = None,
 ) -> Tuple[str, SignoCuanto, List[Dict]]:
     """
     Mediciones débiles sucesivas (colapso gradual).
@@ -266,9 +293,13 @@ def medicion_debil(
 
     Args:
         estado: Estado inicial en superposición
-        fuerza: Intensidad de cada medición (0-1).
-                0 = sin efecto, 1 = colapso inmediato.
-        n_pasos: Número de mediciones débiles antes del colapso final
+        fuerza: Intensidad de cada contracción, en [0, 1].
+                0 = sin efecto. 1 = contracción máxima por paso (peso_i = prob_i),
+                que NO equivale a un colapso inmediato: desde amplitudes
+                proporcionales a (3, 2, 1) un paso con fuerza 1 deja
+                probabilidades ≈ (0.918, 0.081, 0.001).
+        n_pasos: Número de contracciones (entero >= 0) antes del colapso final
+        seed: Semilla del colapso final. Las contracciones son deterministas.
 
     Returns:
         (significante_final, estado_final, registro_de_evolucion)
@@ -277,6 +308,11 @@ def medicion_debil(
     gradual. No implementa una medición débil canónica mediante operadores
     POVM/Kraus y no debe interpretarse como tal.
     """
+    if not np.isfinite(fuerza) or not 0 <= fuerza <= 1:
+        raise ValueError("fuerza debe estar en [0, 1].")
+    if isinstance(n_pasos, bool) or not isinstance(n_pasos, (int, np.integer)) or n_pasos < 0:
+        raise ValueError("n_pasos debe ser un entero >= 0.")
+
     registro = []
     estado_actual = SignoCuanto(estado.significantes.copy(), estado.amplitudes.copy())
 
@@ -300,7 +336,7 @@ def medicion_debil(
         estado_actual.amplitudes = nuevas_amplitudes
 
     # Colapso final (medición fuerte)
-    resultado_final, estado_final, _ = colapso_parole(estado_actual)
+    resultado_final, estado_final, _ = colapso_parole(estado_actual, seed=seed)
 
     return resultado_final, estado_final, registro
 
@@ -308,8 +344,9 @@ def medicion_debil(
 def realidades_alternativas(
     estado: SignoCuanto,
     n_realidades: int = 10,
-    contexto: Optional[ContextoEnunciativo] = None
-) -> Dict[str, List[str]]:
+    contexto: Optional[ContextoEnunciativo] = None,
+    seed: Optional[int] = None,
+) -> Dict[str, Dict[str, Any]]:
     """
     Genera múltiples realidades emergentes del mismo estado inicial.
     
@@ -320,16 +357,18 @@ def realidades_alternativas(
         estado: Estado inicial
         n_realidades: Número de realidades a generar
         contexto: Contexto enunciativo
-    
+        seed: Semilla opcional para reproducir el conjunto completo
+
     Returns:
         Diccionario con las realidades generadas
     """
     realidades = {}
-    
+    semillas = _semillas_hijas(seed, max(0, n_realidades))
+
     for i in range(n_realidades):
         # Copiar estado original
         estado_copia = SignoCuanto(estado.significantes.copy(), estado.amplitudes.copy())
-        resultado, _, info = colapso_parole(estado_copia, contexto)
+        resultado, _, info = colapso_parole(estado_copia, contexto, seed=semillas[i])
         realidades[f"realidad_{i+1}"] = {
             "significante": resultado,
             "probabilidad_original": info["probabilidades_originales"][

@@ -48,16 +48,35 @@ class SignoCuanto:
             self.amplitudes = np.ones(self.dimension, dtype=complex) * amp
         else:
             self.amplitudes = np.array(amplitudes, dtype=complex)
-            
+            if self.amplitudes.shape != (self.dimension,):
+                raise ValueError(
+                    f"Se esperaba un vector de {self.dimension} amplitudes "
+                    f"(una por significante); se recibió forma {self.amplitudes.shape}."
+                )
+
         self.normalizar()
-    
+
     def normalizar(self) -> None:
         """Normalizar el vector de amplitudes (norma L2 = 1)"""
-        norma = np.linalg.norm(self.amplitudes)
-        if norma > 0 and np.isfinite(norma):
-            self.amplitudes = self.amplitudes / norma
-        else:
+        if not np.all(np.isfinite(self.amplitudes)):
             raise ValueError("El vector de amplitudes debe tener norma finita y distinta de cero.")
+        # Se reescala por el módulo máximo antes de calcular la norma para que
+        # vectores muy pequeños o muy grandes (1e-200, 1e200) no se pierdan por
+        # underflow/overflow al elevar al cuadrado.
+        escala = float(np.max(np.abs(self.amplitudes)))
+        if escala <= 0:
+            raise ValueError("El vector de amplitudes debe tener norma finita y distinta de cero.")
+        reescalado = self.amplitudes / escala
+        self.amplitudes = reescalado / np.linalg.norm(reescalado)
+
+    def _indice(self, idx: int) -> int:
+        """Valida un índice de significante. No se aceptan índices negativos:
+        el wrap-around de Python devolvería en silencio otro significante."""
+        if isinstance(idx, (bool, np.bool_)) or not isinstance(idx, (int, np.integer)):
+            raise TypeError(f"El índice debe ser un entero; se recibió {idx!r}.")
+        if not 0 <= idx < self.dimension:
+            raise IndexError(f"Índice fuera de rango: {idx} (dimensión {self.dimension}).")
+        return int(idx)
     
     def probabilidad(self, significante: Union[str, int]) -> float:
         """
@@ -75,8 +94,8 @@ class SignoCuanto:
             except ValueError:
                 raise ValueError(f"Significante '{significante}' no encontrado")
         else:
-            idx = significante
-            
+            idx = self._indice(significante)
+
         return float(np.abs(self.amplitudes[idx]) ** 2)
     
     def colapsar(self, idx: Optional[int] = None, seed: Optional[int] = None) -> tuple:
@@ -126,9 +145,17 @@ class SignoCuanto:
         Calcular fase relativa entre dos significantes.
         
         Returns:
-            Ángulo de fase en radianes
+            Ángulo de fase en radianes, arg(αᵢ) − arg(αⱼ) en (−π, π].
+
+        Raises:
+            ValueError: si alguna de las dos amplitudes es nula; la fase de
+                una amplitud cero no está definida.
         """
-        return np.angle(self.amplitudes[i] / self.amplitudes[j])
+        a_i = self.amplitudes[self._indice(i)]
+        a_j = self.amplitudes[self._indice(j)]
+        if abs(a_i) < 1e-15 or abs(a_j) < 1e-15:
+            raise ValueError("La fase relativa no está definida si una de las amplitudes es nula.")
+        return float(np.angle(a_i * np.conj(a_j)))
     
     def __repr__(self) -> str:
         return f"SignoCuanto({self.significantes[:3]}...)" if len(self.significantes) > 3 else f"SignoCuanto({self.significantes})"
@@ -166,6 +193,10 @@ class Langue:
         Example:
             >>> lang = Langue(3, terminos=["/p/", "/b/", "/t/"])
         """
+        if isinstance(dimension, (bool, np.bool_)) or not isinstance(dimension, (int, np.integer)) or dimension < 1:
+            raise ValueError(f"'dimension' debe ser un entero >= 1; se recibió {dimension!r}.")
+        if terminos is not None and len(set(terminos)) != len(terminos):
+            raise ValueError("Los términos de la langue deben ser únicos.")
         if terminos is not None and len(terminos) != dimension:
             raise ValueError(
                 f"'terminos' debe tener {dimension} elementos, "
@@ -173,7 +204,7 @@ class Langue:
             )
         self.dimension = dimension
         self.nombre = nombre
-        self._base = terminos if terminos is not None else [f"término_{i}" for i in range(dimension)]
+        self._base = list(terminos) if terminos is not None else [f"término_{i}" for i in range(dimension)]
     
     def estado_base(self, idx: int) -> SignoCuanto:
         """
@@ -185,6 +216,10 @@ class Langue:
         Returns:
             SignoCuanto colapsado a ese término
         """
+        if isinstance(idx, (bool, np.bool_)) or not isinstance(idx, (int, np.integer)):
+            raise TypeError(f"El índice debe ser un entero; se recibió {idx!r}.")
+        if not 0 <= idx < self.dimension:
+            raise IndexError(f"Índice de término fuera de rango: {idx} (dimensión {self.dimension}).")
         amplitudes = np.zeros(self.dimension, dtype=complex)
         amplitudes[idx] = 1.0
         return SignoCuanto(self._base, amplitudes)

@@ -28,6 +28,8 @@ def aplicar_contexto_clasico(
     pesos = np.asarray(pesos, dtype=float)
     if pesos.shape != (estado.dimension,):
         raise ValueError("Los pesos deben tener una entrada por significante.")
+    if not np.all(np.isfinite(pesos)):
+        raise ValueError("Los pesos contextuales deben ser finitos.")
     if np.any(pesos < 0):
         raise ValueError("Los pesos contextuales no pueden ser negativos.")
 
@@ -46,6 +48,8 @@ def operador_contexto_diagonal(
     pesos = np.asarray(pesos, dtype=float)
     if pesos.shape != (estado.dimension,):
         raise ValueError("Los pesos deben tener una entrada por significante.")
+    if not np.all(np.isfinite(pesos)):
+        raise ValueError("Los pesos contextuales deben ser finitos.")
     if np.any(pesos < 0):
         raise ValueError("Los pesos contextuales no pueden ser negativos.")
 
@@ -108,6 +112,8 @@ def operador_contexto_unitario(
         raise ValueError("El generador debe ser una matriz cuadrada compatible.")
     if not np.isfinite(intensidad):
         raise ValueError("La intensidad debe ser finita.")
+    if not np.all(np.isfinite(generador)):
+        raise ValueError("El generador contextual debe tener entradas finitas.")
     if not np.allclose(generador, generador.conj().T, atol=1e-10):
         raise ValueError("El generador contextual debe ser Hermitiano.")
 
@@ -123,7 +129,15 @@ def efecto_orden_no_conmutativo(
     intensidad_a: float = 1.0,
     intensidad_b: float = 1.0,
 ) -> dict:
-    """Compara A→B y B→A con contextos unitarios potencialmente no conmutativos."""
+    """Compara A→B y B→A con contextos unitarios potencialmente no conmutativos.
+
+    `norma_conmutador` > 0 es condición necesaria pero no suficiente para un
+    efecto de orden observable: depende del estado y de la base de medición.
+    Con G_A = X y G_B = Z el conmutador es no nulo, pero el estado |0⟩ da
+    exactamente la misma distribución en ambos órdenes (distancia_L1 = 0).
+    A su vez, un efecto de orden observable no es evidencia de ventaja
+    quantum-like: un modelo clásico secuencial también lo produce (ver S002).
+    """
     a = operador_contexto_unitario(estado, generador_a, intensidad_a)
     ab = operador_contexto_unitario(a, generador_b, intensidad_b)
 
