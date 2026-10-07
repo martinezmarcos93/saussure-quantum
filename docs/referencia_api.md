@@ -201,7 +201,7 @@ Retorna la matriz `D = d·I − J` donde `J` es la matriz de unos.
 
 ### `similitud_diferencial()`
 
-Calcula la similitud coseno entre dos signos basada en sus amplitudes.
+Calcula el solapamiento `|⟨ψ|φ⟩|` entre dos signos. Pese al nombre, no usa el operador diferencia.
 
 ```python
 from saussure_quantum.operators import similitud_diferencial
@@ -236,7 +236,7 @@ print(resultado["negatividad_por_significante"])
 |---|---|---|
 | `significante_principal` | `str` | El de mayor amplitud |
 | `negatividad_por_significante` | `Dict[str, float]` | Fuerza negativa de cada signo |
-| `negatividad_total` | `float` | Suma total |
+| `negatividad_total` | `float` | Suma total. Vale siempre `d − 1`: es constante para una dimensión dada |
 | `estado` | `SignoCuanto` | El estado analizado |
 
 ---
@@ -258,7 +258,8 @@ resultado, estado_colapsado, info = colapso_parole(signo)
 colapso_parole(
     estado: SignoCuanto,
     contexto: Optional[ContextoEnunciativo] = None,
-    indice_forzado: Optional[int] = None
+    indice_forzado: Optional[int] = None,
+    seed: Optional[int] = None
 ) → Tuple[str, SignoCuanto, Dict]
 ```
 
@@ -314,7 +315,7 @@ medidor.reset()
 
 ### `medicion_debil()`
 
-Simula un colapso gradual mediante mediciones débiles sucesivas.
+Simula un colapso gradual con una contracción heurística repetida. No implementa una medición débil canónica (POVM/Kraus). Acepta `seed` para reproducir el colapso final; `fuerza` debe estar en `[0, 1]`.
 
 ```python
 from saussure_quantum.collapse import medicion_debil
@@ -393,7 +394,7 @@ Verifica si `[S, P] ≈ iℏI`. Siempre retorna `False` en dimensión finita (li
 Retorna `‖[S,P] − iℏI‖` (norma de Frobenius). Más útil que `verificar_conmutacion()` para diagnóstico.
 
 **`estado_minima_incertidumbre() → SignoCuanto`**  
-Genera un estado gaussiano que aproxima la mínima incertidumbre posible.
+Genera un estado gaussiano de referencia. El nombre es histórico: no minimiza `ΔS·ΔP` (los estados base y las ondas planas tienen producto 0) ni se afirma que sature Robertson.
 
 > 📐 **Nota matemática:** La relación `[Ŝ, P̂] = iℏI` es imposible en dimensión finita porque `Tr([S,P]) = 0` pero `Tr(iℏI) = iℏd ≠ 0`. El operador P usa condiciones de borde periódicas que minimizan el error de borde frente al operador tridiagonal abierto.
 
@@ -424,9 +425,10 @@ Análisis completo. Retorna un `dict` con:
 | `delta_sintagma` | `float` | ΔS |
 | `delta_paradigma` | `float` | ΔP |
 | `producto_incertidumbre` | `float` | ΔS·ΔP |
-| `cota_heisenberg` | `float` | ℏ/2 |
-| `satisface_principio` | `bool` | ΔS·ΔP ≥ ℏ/2 |
-| `factor_sobre_cota` | `float` | ΔS·ΔP / (ℏ/2) |
+| `cota_robertson` | `float` | ½\|⟨[S,P]⟩\|, calculada para ese estado |
+| `valor_conmutador` | `complex` | ⟨[S,P]⟩ |
+| `satisface_robertson` | `bool` | ΔS·ΔP ≥ ½\|⟨[S,P]⟩\| |
+| `factor_sobre_cota` | `float` | ΔS·ΔP / cota de Robertson (`inf` si la cota es 0) |
 | `interpretacion` | `str` | Descripción cualitativa |
 | `dominancia` | `str` | Qué eje predomina |
 
@@ -434,16 +436,16 @@ Análisis completo. Retorna un `dict` con:
 Estado con posición sintagmática perfectamente definida (ΔS = 0).
 
 **`estado_paradigmatico_puro(momento: int) → SignoCuanto`**  
-Estado con modo paradigmático perfectamente definido (ΔP pequeño).
+Estado con modo paradigmático perfectamente definido (onda plana, ΔP = 0).
 
 **`estado_maxima_incertidumbre() → SignoCuanto`**  
-Superposición uniforme — máxima ignorancia en ambos ejes.
+Superposición uniforme. Nombre histórico: es la onda plana de modo 0, con ΔP = 0 y producto 0.
 
 **`demostrar_principio() → Dict`**  
-Calcula y retorna los tres casos canónicos (sintagmático puro, paradigmático puro, mínima incertidumbre).
+Calcula tres estados de referencia (sintagmático puro, paradigmático puro, gaussiano), cada uno con `producto` y `cota_robertson`.
 
 **`visualizar_espacio_fase(estado: SignoCuanto) → np.ndarray`**  
-Retorna la distribución de Wigner discreta `W[x,p]` para visualizar la incertidumbre en el espacio de fase.
+Retorna la función de Wigner discreta `W[x,p]` (suma 1; marginal en x exacta; marginal en p exacta sólo para dimensión impar).
 
 ---
 
@@ -472,7 +474,7 @@ Internamente crea una `Langue` temporal de la dimensión del estado y delega a `
 
 ### `paradoja_del_observador_linguistico()`
 
-Ilustra cómo medir un eje perturba el complementario.
+Compara las dispersiones antes y después de proyectar sobre el autovector más probable de cada eje. La perturbación depende del estado.
 
 ```python
 from saussure_quantum.uncertainty import paradoja_del_observador_linguistico
@@ -487,7 +489,7 @@ resultado = paradoja_del_observador_linguistico(estado)
     "estado_original": {"delta_S", "delta_P", "producto"},
     "despues_medir_sintagma": {"delta_S", "delta_P", "producto", "cambio_significativo"},
     "despues_medir_paradigma": {"delta_S", "delta_P", "producto", "cambio_significativo"},
-    "principio_demostrado": True
+    "perturbacion_observada": bool   # calculado; antes era una constante True
 }
 ```
 

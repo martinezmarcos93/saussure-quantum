@@ -49,7 +49,7 @@ class SimuladorIndeterminacion:
         print(f"ΔS (incertidumbre sintagmática): {analisis['delta_sintagma']:.4f}")
         print(f"ΔP (incertidumbre paradigmática): {analisis['delta_paradigma']:.4f}")
         print(f"ΔS · ΔP = {analisis['producto_incertidumbre']:.4f}")
-        print(f"Cota ℏ/2 = {analisis['cota_heisenberg']:.4f}")
+        print(f"Cota de Robertson ½|⟨[S,P]⟩| = {analisis['cota_robertson']:.4f}")
         print(f"Factor sobre cota: {analisis['factor_sobre_cota']:.2f}x")
         print(f"Interpretación: {analisis['interpretacion']}")
         print(f"Dominancia: {analisis['dominancia']}")
@@ -160,20 +160,24 @@ A continuación, demostramos esta complementariedad.
         
         # Caso 3: Mínima incertidumbre
         print("\n🟢 CASO 3: MÍNIMA INCERTIDUMBRE (COMPROMISO)")
-        print("   El equilibrio óptimo entre ambos ejes")
+        print("   Estado gaussiano de referencia (no minimiza el producto)")
         estado3 = self.experimentar("coherente", None)
         
         print("\n" + "="*60)
         print("CONCLUSIÓN")
         print("="*60)
         print("""
-Cuando el sintagma es muy preciso (ΔS pequeño),
-el paradigma es muy incierto (ΔP grande) y viceversa.
+Un estado con sintagma exacto (ΔS = 0) tiene paradigma disperso
+(ΔP = ℏ/√2), y una onda plana con paradigma exacto (ΔP = 0) tiene
+sintagma disperso.
 
-El producto ΔS·ΔP NUNCA puede ser menor que ℏ/2.
+La cota que se cumple siempre es la de Robertson,
+    ΔS·ΔP ≥ ½|⟨[S,P]⟩|,
+que depende del estado y puede valer 0. En dimensión finita NO
+existe la cota universal ℏ/2: en los dos casos puros el producto es 0.
 
-Esta NO es una limitación técnica, sino un PRINCIPIO FUNDAMENTAL
-de cómo funciona la realidad lingüística (y cuántica).
+Es una propiedad matemática de este par de operadores, usada como
+analogía formal; no es una ley empírica del lenguaje.
 """)
 
 

@@ -11,7 +11,7 @@
 
 ## 📖 ¿De qué trata esto?
 
-Este repositorio materializa computacionalmente la tesis del informe *"Hacia una Fusión de la Semiótica Saussureana y la Mecánica Cuántica"*, que demuestra isomorfías profundas entre ambos sistemas:
+Este repositorio materializa computacionalmente la tesis del informe *"Hacia una Fusión de la Semiótica Saussureana y la Mecánica Cuántica"*, que propone analogías formales entre ambos sistemas (no equivalencias físicas ni resultados empíricos sobre el lenguaje):
 
 | Concepto Saussureano | Análogo Cuántico | Implementación |
 |---|---|---|
@@ -21,7 +21,9 @@ Este repositorio materializa computacionalmente la tesis del informe *"Hacia una
 | Habla (*parole*) | Colapso por medición | `colapso_parole()` |
 | Eje paradigmático | Momento (P̂) | `ObservablesSaussureanos.P` |
 | Eje sintagmático | Posición (Ŝ) | `ObservablesSaussureanos.S` |
-| Indeterminación semántica | Principio de incertidumbre | `incertidumbre_saussure_heisenberg()` |
+| Indeterminación semántica | Relación de incertidumbre de Robertson | `incertidumbre_saussure_heisenberg()` |
+
+> **Alcance.** La columna "análogo cuántico" nombra una correspondencia de modelado. El paquete valida propiedades matemáticas del formalismo; no demuestra que el significado sea físicamente cuántico. El estado de cada afirmación (validada, parcial, no validada) está en [`docs/RESULTADOS_VALIDACION_LOCAL.md`](docs/RESULTADOS_VALIDACION_LOCAL.md).
 
 ### 🎯 Tesis central
 
@@ -37,8 +39,8 @@ El mundo no está hecho de objetos, sino de relaciones de oposición. Una "silla
 - ✅ **Operador diferencia (D̂)**: Implementa el principio saussureano de negatividad esencial
 - ✅ **Colapso semiótico**: Simula el acto de *parole* como medición cuántica
 - ✅ **Contextos enunciativos**: Sesgos, temperatura semántica y ruido ambiental
-- ✅ **Principio de incertidumbre**: Análogo computacional al eje paradigmático/sintagmático
-- ✅ **Mediciones débiles**: Colapso gradual del significado
+- ✅ **Relación de incertidumbre**: cota de Robertson entre los ejes paradigmático y sintagmático (depende del estado; no hay cota universal ℏ/2 en dimensión finita)
+- ✅ **Colapso gradual heurístico** (`medicion_debil`): no es una medición débil canónica POVM/Kraus
 - ✅ **Realidades alternativas**: Múltiples emergencias desde el mismo estado inicial
 - ✅ **Poeta cuántico**: Aplicación creativa que genera poesía por colapso cuántico
 - ✅ **Interfaz gráfica (GUI)**: Acceso visual a todas las herramientas sin línea de comandos
@@ -99,7 +101,7 @@ La interfaz incluye cuatro paneles navegables desde el sidebar:
 | Panel | Descripción |
 |---|---|
 | **◈ Poeta cuántico** | Genera versos por colapso de superposiciones semánticas. Sliders para número de versos, temperatura ℏ y modo (normal / caótico / mínima incertidumbre). Muestra métricas de palabras, colapsos y entropía media. |
-| **◉ Simulador** | Explora el principio ΔS·ΔP ≥ ℏ/2. Elegís el tipo de estado (sintagmático puro, paradigmático puro, mínima incertidumbre, uniforme), la dimensión y la posición, y analizás o demostrás el principio completo. |
+| **◉ Simulador** | Explora la cota de Robertson ΔS·ΔP ≥ ½\|⟨[S,P]⟩\|. Elegís el tipo de estado (sintagmático puro, paradigmático puro, mínima incertidumbre, uniforme), la dimensión y la posición, y analizás o demostrás el principio completo. |
 | **△ Incertidumbre** | Ingresás tus propios significantes y amplitudes, calculás la incertidumbre con barras de probabilidad, o ejecutás la paradoja del observador para ver cómo medir un eje perturba el otro. |
 | **⊗ Op. Diferencia** | Ingresás signos línea por línea, aplicás D̂, analizás la negatividad de cada signo, o calculás la similitud diferencial entre todos los pares del sistema. |
 
@@ -149,8 +151,11 @@ fonema_t = SignoCuanto(["/p/", "/b/", "/t/"], [0, 0, 1])
 # Aplicar el operador diferencia
 diferencia_pura = operador_diferencia([fonema_p, fonema_b, fonema_t])
 print(diferencia_pura)
-# Un fonema que ES por NO SER los otros
+# Σ_{i<j}(ψᵢ − ψⱼ) = 2·/p/ − 2·/t/: con tres estados el del medio (/b/) recibe
+# coeficiente 0 y el resultado depende del orden de la lista.
 ```
+
+> `operador_diferencia` (suma por pares de varios estados) y `OperadorDiferencia` (la matriz `D = d·I − J`, que actúa sobre un solo estado) son construcciones distintas y no equivalentes.
 
 ### Ejemplo 4: Principio de incertidumbre Saussure-Heisenberg
 
@@ -167,7 +172,9 @@ estado = lang.estado_base(0)
 analisis = incertidumbre_saussure_heisenberg(estado)
 print(f"ΔS (sintagma):  {analisis['delta_sintagma']:.3f}")
 print(f"ΔP (paradigma): {analisis['delta_paradigma']:.3f}")
-print(f"ΔS·ΔP = {analisis['producto_incertidumbre']:.3f} ≥ ℏ/2 = 0.5")
+print(f"ΔS·ΔP = {analisis['producto_incertidumbre']:.3f} ≥ cota de Robertson = {analisis['cota_robertson']:.3f}")
+# ΔS = 0.000, ΔP = 0.707 (= ℏ/√2), producto 0.000 ≥ 0.000.
+# Un estado base tiene producto 0: la cota canónica ℏ/2 NO vale en dimensión finita.
 ```
 
 ---
@@ -237,16 +244,19 @@ Langue (Espacio de Hilbert)
 
 |realidad⟩ = M̂_parole |lengua⟩
 
-D̂ = Σᵢ﹤ⱼ (|sᵢ⟩ − |sⱼ⟩)    (operador diferencia)
+D̂(ψ₁…ψₙ) = Σᵢ﹤ⱼ (|ψᵢ⟩ − |ψⱼ⟩)   (diferencia por pares; depende del orden)
+D = d·I − J = d·(I − |u⟩⟨u|)       (operador matricial; laplaciano de K_d)
 
-[Ŝ, P̂] = iℏ_semiótico       (relación de conmutación — aproximada en dim. finita)
+[Ŝ, P̂] ≠ iℏI                       (la relación canónica es imposible en dim. finita)
 
-ΔS · ΔP ≥ ℏ_semiótico / 2   (principio de incertidumbre)
+ΔS · ΔP ≥ ½ |⟨[Ŝ, P̂]⟩|            (Robertson; la cota depende del estado y puede ser 0)
 ```
 
 > **Nota matemática:** La relación `[Ŝ, P̂] = iℏI` es imposible en dimensión finita
 > (Tr([S,P]) = 0 pero Tr(iℏI) = iℏd ≠ 0). El operador P̂ usa condiciones de borde
 > periódicas que minimizan el error de borde. Ver `error_conmutacion()` para diagnóstico.
+> Por eso tampoco existe la cota universal `ΔS·ΔP ≥ ℏ/2`: un estado base tiene `ΔS = 0`,
+> `ΔP = ℏ/√2` y producto 0. P̂ requiere dimensión ≥ 3 (en 1 y 2 es idénticamente nulo).
 
 ---
 
@@ -309,7 +319,9 @@ saussure-quantum/
 - [x] Poeta cuántico (aplicación demo)
 - [x] Interfaz gráfica con todas las herramientas (GUI Tkinter)
 - [x] Langue con términos personalizados
-- [x] Medición débil con contracción genuina
+- [x] Colapso gradual heurístico (no es medición débil POVM/Kraus)
+- [x] Benchmark S002 con ajuste train/test y recuperación de modelo generador (resultado: el diseño binario de dos órdenes no distingue quantum-like del baseline clásico)
+- [x] S003: respuestas conjuntas e igualdad QQ (resultado: QQ es falsable para el modelo proyectivo, pero un modelo clásico también la cumple y el Markov clásico es saturado; ver `docs/RESULTADOS_S003.md`)
 - [ ] Entrelazamiento semántico (correlaciones no locales)
 - [ ] Integración con Qiskit (hardware cuántico real)
 - [ ] Notebooks interactivos completos

@@ -268,19 +268,21 @@ AYUDAS = {
     ),
     # ── Simulador ─────────────────────────────────────────────────────────────
     "sim_panel": (
-        "El Simulador demuestra el Principio de Incertidumbre Saussure-Heisenberg:\n\n"
-        "  ΔS · ΔP ≥ ℏ/2\n\n"
+        "El Simulador explora la relación de incertidumbre de Robertson:\n\n"
+        "  ΔS · ΔP ≥ ½|⟨[S,P]⟩|\n\n"
+        "La cota depende del estado. En dimensión finita NO existe la cota\n"
+        "universal ℏ/2: un estado base tiene ΔS=0, ΔP=ℏ/√2 y producto 0.\n\n"
         "ΔS = incertidumbre sintagmática (¿dónde aparece el signo en la frase?)\n"
         "ΔP = incertidumbre paradigmática (¿con qué otras palabras puede sustituirse?)\n\n"
-        "Cuanto más precisa es la posición de una palabra en la cadena hablada,\n"
-        "menos se sabe qué otras palabras podrían reemplazarla, y viceversa.\n"
-        "Es el análogo lingüístico de posición-momento en mecánica cuántica."
+        "Es una analogía formal con posición-momento, no una equivalencia física\n"
+        "ni una ley empírica del lenguaje."
     ),
     "sim_tipo": (
-        "Sintagmático puro: posición exacta en la frase → ΔS=0, ΔP muy grande.\n"
-        "Paradigmático puro: sustitución exacta definida → ΔP pequeño, ΔS grande.\n"
-        "Mínima incertidumbre: compromiso óptimo entre ambos ejes (estado coherente).\n"
-        "Superposición uniforme: máxima ignorancia sobre ambos ejes."
+        "Sintagmático puro: posición exacta en la frase → ΔS=0, ΔP=ℏ/√2 (finita).\n"
+        "Paradigmático puro: onda plana → ΔP=0, ΔS=√((d²−1)/12).\n"
+        "Mínima incertidumbre: nombre histórico de un estado gaussiano de referencia;\n"
+        "  no minimiza el producto ΔS·ΔP.\n"
+        "Superposición uniforme: es la onda plana de modo 0 → ΔP=0 (paradigma definido)."
     ),
     "sim_dim": (
         "Dimensión del espacio lingüístico (cantidad de términos en el sistema).\n"
@@ -706,7 +708,7 @@ class PanelSimulador(tk.Frame):
         tit = label_titulo(cab, "◉  Simulador de incertidumbre", COLORES["acento2"])
         tit.pack(anchor="w")
         agregar_tooltip(tit, "sim_panel")
-        desc = label_sec(cab, "Explora el principio ΔS·ΔP ≥ ℏ/2 en estados lingüísticos  (?)")
+        desc = label_sec(cab, "Explora la cota de Robertson ΔS·ΔP ≥ ½|⟨[S,P]⟩| en estados lingüísticos  (?)")
         desc.pack(anchor="w", pady=(2,0))
         agregar_tooltip(desc, "sim_panel")
 
@@ -785,18 +787,18 @@ class PanelSimulador(tk.Frame):
         dS   = analisis["delta_sintagma"]
         dP   = analisis["delta_paradigma"]
         prod = analisis["producto_incertidumbre"]
-        cota = analisis["cota_heisenberg"]
+        cota = analisis["cota_robertson"]
 
-        satisface = "✓ SÍ" if analisis["satisface_principio"] else "✗ NO"
+        satisface = "✓ SÍ" if analisis["satisface_robertson"] else "✗ NO"
         txt = (
             f"Estado:           {self.var_tipo.get()}\n"
             f"Dimensión:        {int(self.var_dim.get())}\n\n"
             f"ΔS (sintagma):    {dS:.6f}\n"
             f"ΔP (paradigma):   {dP:.6f}\n"
             f"ΔS · ΔP:          {prod:.6f}\n"
-            f"Cota ℏ/2:         {cota:.6f}\n"
+            f"Cota Robertson:   {cota:.6f}\n"
             f"Factor s/ cota:   {analisis['factor_sobre_cota']:.2f}x\n\n"
-            f"Satisface ΔS·ΔP ≥ ℏ/2:  {satisface}\n\n"
+            f"Satisface ΔS·ΔP ≥ ½|⟨[S,P]⟩|:  {satisface}\n\n"
             f"Interpretación:\n  {analisis['interpretacion']}\n\n"
             f"Dominancia:\n  {analisis['dominancia']}\n"
         )
@@ -814,18 +816,17 @@ class PanelSimulador(tk.Frame):
         demo = principio.demostrar_principio()
 
         lineas = ["╔═══════════════════════════════════════╗",
-                  "║   DEMOSTRACIÓN DEL PRINCIPIO           ║",
-                  "║   ΔS · ΔP ≥ ℏ/2                       ║",
+                  "║   ESTADOS DE REFERENCIA                ║",
+                  "║   ΔS · ΔP ≥ ½|⟨[S,P]⟩|  (Robertson)   ║",
                   "╚═══════════════════════════════════════╝\n"]
         for nombre, datos in demo.items():
             lineas.append(f"[ {nombre.upper()} ]")
             lineas.append(f"  ΔS = {datos['delta_sintagma']:.4f}")
             lineas.append(f"  ΔP = {datos['delta_paradigma']:.4f}")
-            lineas.append(f"  ΔS·ΔP = {datos['producto']:.4f}\n")
+            lineas.append(f"  ΔS·ΔP = {datos['producto']:.4f}   (cota Robertson = {datos['cota_robertson']:.4f})\n")
 
-        cota = HBAR_SEMIOTICO / 2
-        lineas.append(f"Cota mínima ℏ/2 = {cota:.4f}")
-        lineas.append("Cuando ΔS ↓  →  ΔP ↑  y viceversa.")
+        lineas.append("La cota depende del estado: en los dos estados puros vale 0")
+        lineas.append("y el producto también. No hay cota universal ℏ/2 en dimensión finita.")
         escribir_salida(self.salida, "\n".join(lineas))
 
     def _comparar(self):
@@ -836,7 +837,6 @@ class PanelSimulador(tk.Frame):
         pos = int(min(self.var_pos.get(), dim - 1))
         lang = Langue(dim)
         principio = PrincipioIncertidumbreSaussure(lang)
-        cota = HBAR_SEMIOTICO / 2
 
         tipos = [
             ("Sintagmático puro",    principio.estado_sintagmatico_puro(pos)),
@@ -861,7 +861,7 @@ class PanelSimulador(tk.Frame):
             dP   = a["delta_paradigma"]
             prod = a["producto_incertidumbre"]
             factor = a["factor_sobre_cota"]
-            ok = "✓" if a["satisface_principio"] else "✗"
+            ok = "✓" if a["satisface_robertson"] else "✗"
             # Limitar valores infinitos para display
             dS_s   = f"{dS:.4f}"   if np.isfinite(dS)   else "  ∞"
             dP_s   = f"{dP:.4f}"   if np.isfinite(dP)   else "  ∞"
@@ -871,10 +871,9 @@ class PanelSimulador(tk.Frame):
 
         lineas += [
             sep,
-            f"  Cota mínima ℏ/2 = {cota:.4f}",
-            f"  ✓ = satisface el principio   ✗ = viola el principio\n",
-            "  Observá cómo ΔS y ΔP se compensan entre tipos de estado:",
-            "  cuando uno baja, el otro sube para mantener ΔS·ΔP ≥ ℏ/2.",
+            "  ✓ = satisface Robertson (ΔS·ΔP ≥ ½|⟨[S,P]⟩|)   ✗ = lo viola\n",
+            "  Factor = ΔS·ΔP / cota de Robertson del propio estado (∞ si la cota es 0).",
+            "  La cota depende del estado; no existe un mínimo universal ℏ/2.",
         ]
         escribir_salida(self.salida, "\n".join(lineas))
         # Actualizar métricas con el tipo seleccionado actualmente
@@ -1036,7 +1035,7 @@ class PanelIncertidumbre(tk.Frame):
         dS   = res["delta_sintagma"]
         dP   = res["delta_paradigma"]
         prod = res["producto_incertidumbre"]
-        cota = res["cota_heisenberg"]
+        cota = res["cota_robertson"]
 
         probs = np.abs(estado.amplitudes) ** 2
         barra_max = 20
@@ -1051,7 +1050,7 @@ class PanelIncertidumbre(tk.Frame):
             f"ΔS (incertidumbre sintagmática):  {dS:.6f}\n"
             f"ΔP (incertidumbre paradigmática): {dP:.6f}\n"
             f"ΔS · ΔP:                          {prod:.6f}\n"
-            f"Cota ℏ/2:                         {cota:.6f}\n"
+            f"Cota de Robertson ½|⟨[S,P]⟩|:     {cota:.6f}\n"
             f"Factor sobre cota:                {res['factor_sobre_cota']:.2f}x\n\n"
             f"{'─'*40}\n"
             f"{res['interpretacion']}\n"
@@ -1060,7 +1059,7 @@ class PanelIncertidumbre(tk.Frame):
         escribir_salida(self.salida, txt)
         self.m_ds.set(f"{dS:.3f}")
         self.m_dp.set(f"{dP:.3f}")
-        self.m_ok.set("✓" if res["satisface_principio"] else "✗")
+        self.m_ok.set("✓" if res["satisface_robertson"] else "✗")
 
     def _paradoja(self):
         if not PAQUETE_OK:
@@ -1092,8 +1091,8 @@ class PanelIncertidumbre(tk.Frame):
             f"  ΔS = {post_p['delta_S']:.4f}   ΔP = {post_p['delta_P']:.4f}\n"
             f"  ΔS·ΔP = {post_p['producto']:.4f}\n"
             f"  Perturbación significativa: {'SÍ' if post_p['cambio_significativo'] else 'NO'}\n\n"
-            "Medir un eje perturba el otro. No hay\n"
-            "observación sin perturbación.\n"
+            f"Perturbación observada en este estado: {'SÍ' if res['perturbacion_observada'] else 'NO'}\n"
+            "(depende del estado: un autoestado no se altera).\n"
         )
         escribir_salida(self.salida, txt)
 
@@ -1377,11 +1376,11 @@ Estado cuántico (|ψ⟩):
   posibles hasta ser medido. La medición colapsa la
   superposición a un resultado concreto.
 
-Principio de incertidumbre (Heisenberg):
-  ΔS · ΔP ≥ ℏ/2
-  No se pueden conocer simultáneamente posición y momento
-  con precisión arbitraria. Cuanto más precisa es una
-  medición, más incierta se vuelve la complementaria.
+Relación de incertidumbre (Robertson):
+  ΔS · ΔP ≥ ½|⟨[S,P]⟩|
+  En mecánica cuántica continua [x,p]=iℏ da la cota ℏ/2.
+  En este modelo de dimensión finita esa relación canónica
+  es imposible y la cota depende del estado (puede ser 0).
 
 Colapso por observación:
   "No hay fenómeno cuántico sin observación." — Bohr
@@ -1423,9 +1422,9 @@ NOTA MATEMÁTICA:
   Podés personalizar el diccionario por categoría.
 
 ◉ SIMULADOR DE INCERTIDUMBRE
-  Demuestra que ΔS·ΔP ≥ ℏ/2 para distintos tipos
-  de estado. Compará los 4 tipos en una sola tabla
-  y observá cómo ΔS y ΔP se compensan mutuamente.
+  Calcula ΔS, ΔP y la cota de Robertson para distintos
+  tipos de estado. Compará los 4 tipos en una sola tabla
+  y observá que la cota depende del estado.
 
 △ PRINCIPIO DE INCERTIDUMBRE
   Analizá tu propio conjunto de signos. Ingresá los

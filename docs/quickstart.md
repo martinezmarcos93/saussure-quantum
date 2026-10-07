@@ -78,24 +78,24 @@ Genera versos usando colapsos probabilísticos. Cada palabra del poema comienza 
 
 ### ◉ Simulador de incertidumbre
 
-Demuestra el **Principio de Incertidumbre Saussure-Heisenberg**:
+Explora la **relación de incertidumbre de Robertson** entre el eje sintagmático y el paradigmático:
 
-> No se puede conocer simultáneamente con precisión dónde aparece una palabra en la frase (sintagma) y con qué otras palabras puede reemplazarse (paradigma).
+> ΔS·ΔP ≥ ½|⟨[S,P]⟩|
 
-Es el análogo lingüístico del principio de Heisenberg en física: cuanto más precisamente sabés la posición de un electrón, menos podés saber su velocidad.
+Es una analogía formal con posición-momento. En este modelo de dimensión finita la cota depende del estado y puede valer 0: un estado con sintagma exacto tiene ΔS = 0 y ΔP = ℏ/√2. No existe la cota universal ℏ/2.
 
 **Cómo usarlo:**
 
 1. Elegí el **tipo de estado** del menú desplegable
 2. Ajustá la **dimensión** (tamaño del sistema lingüístico)
-3. **Analizar estado** → muestra ΔS, ΔP y si se cumple la cota ℏ/2
-4. **Demostrar principio** → muestra los tres casos canónicos
+3. **Analizar estado** → muestra ΔS, ΔP y la cota de Robertson de ese estado
+4. **Demostrar principio** → muestra tres estados de referencia con su cota
 5. **Comparar 4 estados** → tabla que muestra los cuatro tipos juntos
 
 **Qué significan los números:**
 - `ΔS` = incertidumbre sintagmática (¿dónde está en la frase?)
 - `ΔP` = incertidumbre paradigmática (¿con qué se puede reemplazar?)
-- `ΔS·ΔP` = producto — nunca puede ser menor que `ℏ/2 = 0.5`
+- `ΔS·ΔP` = producto — nunca es menor que la cota de Robertson del propio estado (que puede ser 0)
 
 ---
 

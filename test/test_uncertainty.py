@@ -67,10 +67,16 @@ class TestObservablesSaussureanos:
         
         # Delta_S debe ser 0 (posición definida)
         assert np.isclose(delta_S, 0.0, atol=1e-10)
-        # Delta_P debe ser muy grande (momento incierto)
-        assert delta_P > 1.0
-        # Principio de incertidumbre: ΔS·ΔP ≥ ℏ/2
-        assert producto >= HBAR_SEMIOTICO / 2 - 1e-10
+        # ΔP es finita y vale exactamente ℏ/√2: <P>=0 y <P²>=Σ_j|P_j0|²=ℏ²/2.
+        # (El test anterior exigía ΔP > 1 y ΔS·ΔP ≥ ℏ/2; ambas cosas son
+        # falsas en dimensión finita: aquí el producto es exactamente 0.)
+        assert np.isclose(delta_P, HBAR_SEMIOTICO / np.sqrt(2), atol=1e-12)
+        assert np.isclose(producto, 0.0, atol=1e-12)
+        # La cota correcta es la de Robertson, que para este estado es 0.
+        psi = estado.amplitudes
+        cota = 0.5 * abs(np.vdot(psi, obs._conmutador @ psi))
+        assert np.isclose(cota, 0.0, atol=1e-12)
+        assert producto >= cota - 1e-10
     
     def test_estado_minima_incertidumbre(self):
         """Test estado de mínima incertidumbre"""
@@ -78,12 +84,14 @@ class TestObservablesSaussureanos:
         estado = obs.estado_minima_incertidumbre()
         delta_S, delta_P, producto = obs.incertidumbre(estado)
         
-        cota = HBAR_SEMIOTICO / 2
-        # El principio de incertidumbre debe satisfacerse siempre
-        assert producto >= cota - 1e-5, f"Viola el principio: {producto} < {cota}"
-        # En discreto, el estado coherente no satura perfectamente.
-        # Se acepta hasta 5x la cota mínima como razonable.
-        assert producto / cota < 5.0, f"Demasiado lejos de la cota: factor={producto/cota:.2f}"
+        # La cota que debe cumplirse es la de Robertson, calculada con el
+        # conmutador real. La cota canónica ℏ/2 no aplica en dimensión finita:
+        # este estado tiene producto ≈ 0.4876 < 0.5 sin violar nada.
+        psi = estado.amplitudes
+        cota = 0.5 * abs(np.vdot(psi, obs._conmutador @ psi))
+        assert producto >= cota - 1e-10, f"Viola Robertson: {producto} < {cota}"
+        assert producto < HBAR_SEMIOTICO / 2, "Contraejemplo documentado de la cota canónica"
+        assert np.isfinite(producto) and producto > 0
 
 
 class TestPrincipioIncertidumbreSaussure:
@@ -107,8 +115,11 @@ class TestPrincipioIncertidumbreSaussure:
         assert "delta_sintagma" in analisis
         assert "delta_paradigma" in analisis
         assert "producto_incertidumbre" in analisis
-        assert "satisface_principio" in analisis
-        assert analisis["satisface_principio"] is True
+        assert "cota_robertson" in analisis
+        assert "satisface_robertson" in analisis
+        assert analisis["satisface_robertson"] is True
+        # La superposición uniforme es autovector de P (k=0): ΔP = 0.
+        assert np.isclose(analisis["delta_paradigma"], 0.0, atol=1e-10)
     
     def test_estado_sintagmatico_puro(self):
         """Test estado con sintagma puro"""
@@ -144,14 +155,20 @@ class TestPrincipioIncertidumbreSaussure:
         assert "paradigma_puro" in demo
         assert "minima_incertidumbre" in demo
         
-        # El estado de mínima incertidumbre debe tener producto más bajo
         prod_min = demo["minima_incertidumbre"]["producto"]
         prod_sintagma = demo["sintagma_puro"]["producto"]
-        
-        # El producto de mínima incertidumbre debe ser finito
-        assert np.isfinite(prod_min)
-        # El producto del sintagma puro puede ser inf o muy grande
-        assert prod_sintagma > prod_min or np.isinf(prod_sintagma)
+        prod_paradigma = demo["paradigma_puro"]["producto"]
+
+        # Los dos estados puros tienen producto exactamente 0 (una de las dos
+        # dispersiones se anula y la otra es finita). El test anterior suponía
+        # que el sintagma puro tenía producto "infinito o muy grande".
+        assert np.isclose(prod_sintagma, 0.0, atol=1e-10)
+        assert np.isclose(prod_paradigma, 0.0, atol=1e-10)
+        # El estado gaussiano de referencia NO minimiza el producto.
+        assert np.isfinite(prod_min) and prod_min > prod_sintagma
+        # Robertson se cumple en los tres casos.
+        for caso in demo.values():
+            assert caso["producto"] >= caso["cota_robertson"] - 1e-10
 
 
 class TestFuncionesDeAltoNivel:
@@ -163,11 +180,12 @@ class TestFuncionesDeAltoNivel:
         resultado = incertidumbre_saussure_heisenberg(estado)
         
         assert "producto_incertidumbre" in resultado
-        assert resultado["satisface_principio"] is True
+        assert resultado["satisface_robertson"] is True
     
     def test_paradoja_observador(self):
         """Test paradoja del observador"""
-        estado = SignoCuanto(["a", "b"], [1, 0])  # Estado puro
+        # Dimensión 3: es la mínima con operador paradigma no trivial.
+        estado = SignoCuanto(["a", "b", "c"], [1, 1, 1])
         resultado = paradoja_del_observador_linguistico(estado)
         
         assert "estado_original" in resultado
@@ -176,8 +194,20 @@ class TestFuncionesDeAltoNivel:
         
         # Medir sintagma debe perturbar el paradigma
         perturbacion = resultado["despues_medir_sintagma"]["cambio_significativo"]
-        # Para estado puro, debería ser True o al menos definido
         assert isinstance(perturbacion, bool)
+        # El estado uniforme tiene ΔP = 0; proyectar sobre S lo lleva a un
+        # estado base con ΔP = ℏ/√2: la perturbación es real y medible.
+        assert perturbacion is True
+        assert np.isclose(resultado["despues_medir_sintagma"]["delta_P"], HBAR_SEMIOTICO / np.sqrt(2))
+        # El indicador global se calcula; ya no es una constante True.
+        assert resultado["perturbacion_observada"] is True
+        assert "principio_demostrado" not in resultado
+
+    def test_paradoja_observador_sin_perturbacion(self):
+        """Un estado base ya es autoestado de S: medir S no altera nada."""
+        estado = SignoCuanto(["a", "b", "c"], [1, 0, 0])
+        resultado = paradoja_del_observador_linguistico(estado)
+        assert resultado["despues_medir_sintagma"]["cambio_significativo"] is False
 
 
 if __name__ == "__main__":
