@@ -626,15 +626,26 @@ def potencia_qq(d_ab: float, d_ba: float, n_por_orden: int, alpha: float = 0.05)
 
 
 def n_requerido_qq(d_ab: float, d_ba: float, potencia: float = 0.8, alpha: float = 0.05) -> int:
-    """Observaciones por orden necesarias para detectar q con la potencia pedida."""
+    """Observaciones por orden necesarias para detectar q con la potencia pedida.
+
+    Es una aproximación normal para dos proporciones independientes. En casos
+    degenerados (p1/p2 en {0,1}) la fórmula asintótica puede dar n=0 aunque
+    cualquier experimento requiere al menos una observación por orden.
+    """
+    for nombre, v in (("d_ab", d_ab), ("d_ba", d_ba)):
+        if not np.isfinite(v) or not 0.0 <= v <= 1.0:
+            raise ValueError(f"{nombre} debe estar en [0, 1].")
     if d_ab == d_ba:
         raise ValueError("Con q = 0 ningún tamaño muestral alcanza potencia mayor que alpha.")
     if not 0 < potencia < 1:
         raise ValueError("potencia debe estar en (0, 1).")
+    if not 0 < alpha < 1:
+        raise ValueError("alpha debe estar en (0, 1).")
     comun = (d_ab + d_ba) / 2
     za, zb = stats.norm.ppf(1 - alpha / 2), stats.norm.ppf(potencia)
     numerador = za * np.sqrt(2 * comun * (1 - comun)) + zb * np.sqrt(d_ab * (1 - d_ab) + d_ba * (1 - d_ba))
-    return int(np.ceil((numerador / (d_ab - d_ba)) ** 2))
+    n = int(np.ceil((numerador / (d_ab - d_ba)) ** 2))
+    return max(1, n)
 
 
 def monte_carlo_qq(
