@@ -4,7 +4,9 @@ Setup configuration for Saussure-Quantum Fusion package
 
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as fh:
+# El archivo se llama "Readme.md": en Linux los nombres distinguen mayúsculas
+# y abrir "README.md" hacía fallar `pip install -e .`.
+with open("Readme.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 # Dependencias runtime: solo lo que el paquete necesita para funcionar.
