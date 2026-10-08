@@ -428,6 +428,14 @@ def test_potencia_analitica_coincide_con_monte_carlo_y_crece_con_n():
     assert np.isclose(s.potencia_qq(0.3, 0.3, 1000), 0.05, atol=1e-6)
 
 
+def test_n_requerido_qq_maneja_casos_degenerados():
+    assert s.n_requerido_qq(1.0, 0.0, potencia=0.8) == 1
+    with pytest.raises(ValueError):
+        s.n_requerido_qq(1.1, 0.0)
+    with pytest.raises(ValueError):
+        s.n_requerido_qq(0.2, 0.1, alpha=0.0)
+
+
 def test_contraste_de_cotas_proyectivas():
     """Un régimen clásico pasa QQ al nivel nominal y aun así se detecta como no proyectivo."""
     p_inc = s.probabilidades_regimen_s003("repeticion_incompatible")
