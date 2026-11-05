@@ -30,6 +30,15 @@ except ImportError as e:
     PAQUETE_OK = False
     IMPORT_ERROR = str(e)
 
+# Léxico real del español (UD_Spanish-AnCora). Opcional: si no se generó
+# con `python saussure_quantum/lexicon.py`, el panel del poeta sigue
+# funcionando solo con el diccionario manual.
+try:
+    from saussure_quantum.lexicon import cargar_lexicon, RUTA_LEXICON_DEFAULT
+    LEXICON_REAL_OK = RUTA_LEXICON_DEFAULT.exists()
+except ImportError:
+    LEXICON_REAL_OK = False
+
 
 # ── Paleta de colores ─────────────────────────────────────────────────────────
 COLORES = {
@@ -514,6 +523,31 @@ class PanelPoeta(tk.Frame):
             fila.pack(fill="x", pady=2)
             self.dic_entries[cat.lower()] = entry
 
+        # Léxico real (UD_Spanish-AnCora): miles de lemas por categoría con
+        # amplitud proporcional a su frecuencia en el corpus, en vez de las
+        # ~8 palabras manuales de arriba.
+        fila_real = tk.Frame(dic_sec, bg=COLORES["panel"])
+        self.var_usar_real = tk.BooleanVar(value=False)
+        chk = tk.Checkbutton(
+            fila_real,
+            text="Usar léxico real (AnCora, miles de palabras por categoría)",
+            variable=self.var_usar_real, command=self._toggle_lexicon_real,
+            font=FUENTE_LABEL, bg=COLORES["panel"], fg=COLORES["texto"],
+            selectcolor=COLORES["entrada"], activebackground=COLORES["panel"],
+            activeforeground=COLORES["texto"],
+            state="normal" if LEXICON_REAL_OK else "disabled",
+        )
+        chk.pack(side="left", padx=(10,0), pady=(4,2))
+        if not LEXICON_REAL_OK:
+            tk.Label(fila_real, text="(generá el léxico con: python saussure_quantum/lexicon.py)",
+                     font=FUENTE_LABEL, bg=COLORES["panel"], fg=COLORES["texto_sec"]).pack(side="left", padx=6)
+        fila_real.pack(fill="x", pady=(2,0))
+
+    def _toggle_lexicon_real(self):
+        estado = "disabled" if self.var_usar_real.get() else "normal"
+        for entry in self.dic_entries.values():
+            entry.config(state=estado)
+
         # Botones
         btn_row = tk.Frame(self, bg=COLORES["bg"])
         btn_row.grid(row=3, column=0, sticky="nw", padx=24, pady=(4,8))
@@ -556,6 +590,23 @@ class PanelPoeta(tk.Frame):
             if len(palabras) < 2:
                 raise ValueError(f"'{cat}' necesita al menos 2 palabras")
             amps = [1.0] * len(palabras)
+            dic[cat] = SignoCuanto(palabras, amps)
+        return dic
+
+    def _dic_desde_lexicon_real(self):
+        """
+        Diccionario con el léxico real (AnCora): amplitud = sqrt(frecuencia),
+        de modo que P(palabra) = |amplitud|² queda proporcional a su
+        frecuencia relativa en el corpus en vez de ser uniforme.
+        """
+        lexicon = cargar_lexicon(RUTA_LEXICON_DEFAULT)
+        dic = {}
+        for cat in ("sustantivos", "verbos", "adjetivos", "conectores"):
+            entradas = lexicon.get(cat, [])
+            if not entradas:
+                continue
+            palabras = [lema for lema, _ in entradas]
+            amps = [np.sqrt(freq) for _, freq in entradas]
             dic[cat] = SignoCuanto(palabras, amps)
         return dic
 
@@ -629,7 +680,10 @@ class PanelPoeta(tk.Frame):
             return
 
         try:
-            diccionario = self._parse_dic()
+            if self.var_usar_real.get():
+                diccionario = self._dic_desde_lexicon_real()
+            else:
+                diccionario = self._parse_dic()
         except ValueError as e:
             escribir_salida(self.salida, f"⚠  Error en diccionario: {e}\n")
             return

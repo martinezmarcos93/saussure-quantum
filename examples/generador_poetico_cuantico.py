@@ -11,39 +11,78 @@ import numpy as np
 from saussure_quantum import SignoCuanto, Langue
 from saussure_quantum.collapse import colapso_parole, ContextoEnunciativo
 from saussure_quantum.operators import operador_diferencia
+from saussure_quantum.lexicon import cargar_lexicon, RUTA_LEXICON_DEFAULT
+
+# Diccionario de juguete (6 palabras por categoría): se usa solo si no hay
+# léxico real disponible en saussure_quantum/recursos/lexicon_es.json
+# (generado con `python saussure_quantum/lexicon.py` a partir de
+# UD_Spanish-AnCora).
+DICCIONARIO_JUGUETE = {
+    "sustantivos": (
+        ["amor", "caos", "luz", "sombra", "infinito", "vacío"],
+        [1, 1.2, 0.8, 0.9, 1.1, 0.7],
+    ),
+    "verbos": (
+        ["nace", "muere", "sueña", "vuela", "cae", "asciende"],
+        [1, 0.9, 1.3, 0.8, 0.6, 1.1],
+    ),
+    "adjetivos": (
+        ["eterno", "fugaz", "profundo", "ligero", "oscuro", "brillante"],
+        [1.2, 0.8, 0.7, 1.1, 0.9, 1.3],
+    ),
+    "conectores": (
+        ["y", "o", "pero", "cuando", "donde", "como"],
+        [1.5, 0.5, 0.8, 1.2, 0.6, 0.9],
+    ),
+}
 
 
 class PoetaCuantico:
     """
     Poeta que escribe versos usando colapsos cuánticos.
-    
+
     Cada palabra comienza en superposición y colapsa
     al ser "dicha" (escrita).
     """
-    
-    def __init__(self, nombre: str = "Quantum Poet"):
+
+    def __init__(self, nombre: str = "Quantum Poet", ruta_lexicon=RUTA_LEXICON_DEFAULT):
+        """
+        Args:
+            nombre: Nombre del poeta
+            ruta_lexicon: Ruta al léxico real (JSON categoria -> [(lema, frecuencia)]).
+                Si el archivo no existe, usa el diccionario de juguete original.
+        """
         self.nombre = nombre
         self.historial = []
-        
-        # Diccionario cuántico: cada entrada es un SignoCuanto
-        self.diccionario = {
-            "sustantivos": SignoCuanto(
-                ["amor", "caos", "luz", "sombra", "infinito", "vacío"],
-                [1, 1.2, 0.8, 0.9, 1.1, 0.7]
-            ),
-            "verbos": SignoCuanto(
-                ["nace", "muere", "sueña", "vuela", "cae", "asciende"],
-                [1, 0.9, 1.3, 0.8, 0.6, 1.1]
-            ),
-            "adjetivos": SignoCuanto(
-                ["eterno", "fugaz", "profundo", "ligero", "oscuro", "brillante"],
-                [1.2, 0.8, 0.7, 1.1, 0.9, 1.3]
-            ),
-            "conectores": SignoCuanto(
-                ["y", "o", "pero", "cuando", "donde", "como"],
-                [1.5, 0.5, 0.8, 1.2, 0.6, 0.9]
-            )
-        }
+        self.usando_lexicon_real = False
+
+        try:
+            lexicon = cargar_lexicon(ruta_lexicon)
+            self.diccionario = self._diccionario_desde_lexicon(lexicon)
+            self.usando_lexicon_real = True
+        except (FileNotFoundError, OSError):
+            self.diccionario = {
+                categoria: SignoCuanto(palabras, amplitudes)
+                for categoria, (palabras, amplitudes) in DICCIONARIO_JUGUETE.items()
+            }
+
+    @staticmethod
+    def _diccionario_desde_lexicon(lexicon) -> dict:
+        """
+        Construye un SignoCuanto por categoría a partir de (lema, frecuencia).
+
+        Amplitud = sqrt(frecuencia): como SignoCuanto normaliza por norma L2,
+        la probabilidad de colapso de cada lema queda proporcional a su
+        frecuencia relativa en el corpus (P = |amplitud|² ∝ frecuencia).
+        """
+        diccionario = {}
+        for categoria, entradas in lexicon.items():
+            if not entradas:
+                continue
+            palabras = [lema for lema, _ in entradas]
+            amplitudes = [np.sqrt(freq) for _, freq in entradas]
+            diccionario[categoria] = SignoCuanto(palabras, amplitudes)
+        return diccionario
     
     def palabra_aleatoria(self, categoria: str, humor: float = 1.0) -> str:
         """
@@ -177,7 +216,15 @@ def main():
     
     # Crear poeta
     poeta = PoetaCuantico("Neurona Cuántica")
-    
+
+    print("\n" + "="*60)
+    print("LÉXICO CARGADO")
+    print("="*60)
+    fuente = "real (UD_Spanish-AnCora)" if poeta.usando_lexicon_real else "juguete (6 palabras/categoría)"
+    print(f"  Fuente: {fuente}")
+    for categoria, signo in poeta.diccionario.items():
+        print(f"  {categoria}: {signo.dimension} palabras")
+
     # Generar poemas con diferentes humores
     print("\n" + "="*60)
     print("POEMA 1: HUMOR NORMAL (ℏ = 1.0)")
